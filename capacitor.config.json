@@ -1,0 +1,9 @@
+{
+  "appId": "com.yourairline.crewroster",
+  "appName": "Crew Roster",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#E9EEF1"
+  }
+}

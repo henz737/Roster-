@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crew roster planner</title>
+<style>
+:root{--bg:#E9EEF1;--panel:#FFFFFF;--ink:#16233A;--muted:#56677A;--line:#CAD4DC;--strip:#F5EBCF;--warn:#B86E00;--ok:#2E7D4F;--err:#B3261E;--focus:#2A6F97;
+  --t0:#2A6F97;--t1:#8C2F6B;--t2:#3F7D3A;--t3:#A0522D;--t4:#5B4B9A;--t5:#1F7A7A;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1724;--panel:#152234;--ink:#E3E9EF;--muted:#94A4B6;--line:#28394E;--strip:#2A2819;--warn:#E9A23B;--ok:#5DBB86;--err:#F2857B;--focus:#5FA8D3;
+  --t0:#5FA8D3;--t1:#D16BA5;--t2:#7CC474;--t3:#E0935F;--t4:#A796E8;--t5:#5CC8C8;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0E1724;--panel:#152234;--ink:#E3E9EF;--muted:#94A4B6;--line:#28394E;--strip:#2A2819;--warn:#E9A23B;--ok:#5DBB86;--err:#F2857B;--focus:#5FA8D3;
+  --t0:#5FA8D3;--t1:#D16BA5;--t2:#7CC474;--t3:#E0935F;--t4:#A796E8;--t5:#5CC8C8;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.4}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+header.top{max-width:1400px;margin:0 auto;padding:22px 16px 10px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+h1{margin:0;font-size:clamp(30px,5vw,46px);line-height:1.05;font-weight:700;letter-spacing:-.01em}
+h2{font-size:21px;margin:0 0 8px}
+.sub{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.btn{font:inherit;font-weight:600;border:1px solid var(--ink);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:4px;cursor:pointer;min-height:44px}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.small{min-height:36px;padding:4px 10px;font-size:14px}
+.btn.danger-solid{background:var(--err);border-color:var(--err);color:#fff}
+.btn.danger{border-color:var(--err);color:var(--err);background:transparent}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+nav.tabs{max-width:1400px;margin:0 auto;padding:0 16px;display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{font:inherit;font-weight:600;background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;color:var(--muted);cursor:pointer;min-height:44px;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
+main{max-width:1400px;margin:0 auto;padding:16px}
+.summary{display:flex;flex-wrap:wrap;gap:10px 32px;margin:0 0 16px}
+.summary div{min-width:110px}
+.summary b{font-size:28px;display:block;line-height:1.1;font-weight:700}
+.summary span{color:var(--muted);font-size:14px}
+.summary .bad b{color:var(--warn)}
+.summary .good b{color:var(--ok)}
+.steps{margin:0;padding-left:22px}
+.steps li{margin:3px 0}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+.chip{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:5px 12px;border-radius:999px;cursor:pointer;min-height:36px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted);margin:0 0 10px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.gridwrap{overflow:auto;border:1px solid var(--line);background:var(--panel);border-radius:6px;max-height:75vh}
+table.grid{border-collapse:separate;border-spacing:0;min-width:100%}
+.grid th,.grid td{border-bottom:1px solid var(--line);padding:3px;vertical-align:top}
+.grid thead th{position:sticky;top:0;background:var(--panel);font-weight:600;font-size:14px;text-align:left;padding:8px 6px;white-space:nowrap;z-index:2}
+.grid thead th.we{color:var(--muted)}
+.grid .who{position:sticky;left:0;background:var(--panel);z-index:1;min-width:148px;max-width:170px;text-align:left;padding:6px 10px;border-right:1px solid var(--line)}
+.grid thead .who{z-index:3}
+.nm{display:block;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:block;font-size:13px;color:var(--muted);font-weight:400}
+.grid td{min-width:100px;width:100px}
+.grid td.tot{font-weight:600;text-align:right;padding-right:10px;vertical-align:middle;min-width:64px}
+.strip{display:block;width:100%;text-align:left;font:inherit;background:var(--strip);color:var(--ink);border:1px solid var(--line);border-left:5px solid var(--t0);border-radius:3px;padding:4px 6px;cursor:pointer;line-height:1.2}
+.strip .cd{font-weight:700;font-size:14px}
+.strip .rt,.strip .tm{display:block;font-size:12px}
+.strip .rt{color:var(--muted);overflow-wrap:anywhere}
+.strip.open{border-left-color:var(--warn)!important;border-style:dashed;border-left-style:solid;width:180px}
+.cell{display:block;width:100%;min-height:58px;font:inherit;font-size:13px;border:1px dashed transparent;background:none;color:var(--muted);border-radius:3px;cursor:pointer}
+.cell:hover{border-color:var(--line)}
+.cell.leave{background:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--muted) 20%,transparent) 6px 8px);color:var(--ink);font-weight:600;border:1px solid var(--line)}
+.openlist{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.note{color:var(--muted);font-size:14px;margin:4px 0 10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:16px}
+.panelhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.panelhead h2{margin:0}
+table.list{border-collapse:collapse;width:100%;font-size:15px}
+.list th,.list td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.list th{font-weight:600;color:var(--muted);font-size:14px;white-space:nowrap}
+.list td.acts{white-space:nowrap;text-align:right}
+.tablewrap{overflow-x:auto}
+.form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600}
+input,select{font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);min-height:42px;max-width:100%}
+input.code{text-transform:uppercase;width:90px}
+input[type=number]{width:110px}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.rules small{font-weight:400;color:var(--muted)}
+.days{display:flex;gap:4px;flex-wrap:wrap}
+.days .chip{min-height:34px;padding:3px 10px;font-size:13px}
+.tdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.warnline{color:var(--warn);font-size:14px}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);padding:0;width:min(640px,calc(100% - 20px));max-height:88vh}
+dialog::backdrop{background:rgba(10,20,35,.5)}
+.dlg{padding:18px 20px}
+.dlg h3{margin:0 0 6px;font-size:24px}
+.dlg h4{margin:16px 0 6px;font-size:16px}
+.dlg ul{margin:0;padding-left:18px}
+.dlg li{margin:2px 0}
+.reason{color:var(--muted)}
+.dlg .close{float:right}
+fieldset{border:0;padding:0;margin:14px 0 0}
+legend{font-size:14px;font-weight:600;margin-bottom:6px;padding:0}
+.leg{display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;padding:10px 0;border-bottom:1px solid var(--line)}
+.leg .ln{font-weight:700;align-self:center;min-width:44px}
+.leg .legacts{display:flex;gap:6px;flex-wrap:wrap}
+.ground{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:14px;color:var(--muted);padding:6px 0 6px 52px;border-bottom:1px solid var(--line)}
+.leg input{width:100%}
+@media (max-width:560px){.leg{grid-template-columns:1fr 1fr}.leg .ln{grid-column:1/-1}.leg .legacts{grid-column:1/-1}.ground{padding-left:0}}
+.dayhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px;padding:8px 10px;background:var(--bg);border-radius:6px;font-weight:700}
+.nightstop{display:flex;align-items:center;gap:8px;margin:10px 0 0;padding:10px 12px;border:1px dashed var(--line);border-radius:6px;font-size:15px}
+.strip .ns{display:block;font-size:12px;font-weight:600;color:var(--warn)}
+.strip.cont{border-left-style:dashed}
+.hint{color:var(--warn);font-size:15px;margin:8px 0 0}
+.psum{background:var(--bg);border-radius:6px;padding:10px 12px;margin:12px 0;font-size:15px}
+.errs{color:var(--err);font-size:14px;margin:0 0 12px;padding-left:18px}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.toast.show{opacity:1}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Crew roster planner</h1>
+    <p class="sub" id="period"></p>
+  </div>
+  <div class="actions">
+    <button class="btn" id="build">Build roster</button>
+    <button class="btn ghost" id="reset">Reset sample data</button>
+  </div>
+</header>
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" data-tab="roster" aria-selected="true">Roster</button>
+  <button class="tab" role="tab" data-tab="flights" aria-selected="false">Flights and routes</button>
+  <button class="tab" role="tab" data-tab="fleet" aria-selected="false">Aircraft</button>
+  <button class="tab" role="tab" data-tab="crew" aria-selected="false">Crew</button>
+  <button class="tab" role="tab" data-tab="rules" aria-selected="false">Rules</button>
+</nav>
+<main>
+  <section id="tab-roster">
+    <div class="panel" id="intro">
+      <div class="panelhead"><h2>Getting started</h2><button class="btn ghost small" id="hideintro">Hide</button></div>
+      <ol class="steps">
+        <li>Add the aircraft types you fly under <b>Aircraft</b>, with the cabin crew each one needs.</li>
+        <li>Create each duty under <b>Flights and routes</b>: pick the aircraft, add legs with departure and arrival times, and choose the days it operates.</li>
+        <li>Add your crew under <b>Crew</b> with their position, aircraft rating and base.</li>
+        <li>Check the limits under <b>Rules</b>. The roster rebuilds itself after every change.</li>
+      </ol>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div id="opentime"></div>
+    <div class="filters" id="filters"></div>
+    <div class="legend" id="legend"></div>
+    <div class="gridwrap"><table class="grid" id="grid"></table></div>
+  </section>
+  <section id="tab-flights" hidden>
+    <div class="panel">
+      <div class="panelhead"><h2>Flights and routes</h2><button class="btn" id="addflight">Add flight</button></div>
+      <p class="note">Each flight is one duty day that starts and ends at the crew base. Times are local. Report and release times are worked out from the Rules tab.</p>
+      <div class="tablewrap"><table class="list" id="patterns"></table></div>
+    </div>
+  </section>
+  <section id="tab-fleet" hidden>
+    <div class="panel">
+      <h2>Add aircraft type</h2>
+      <form class="form" id="addfleet">
+        <label>Aircraft type<input name="code" list="actypes" required maxlength="12" placeholder="e.g. ATR 72"></label>
+        <label>Cabin crew needed<input name="cc" type="number" min="0" max="20" value="2" required></label>
+        <button class="btn" type="submit">Add aircraft</button>
+      </form>
+      <datalist id="actypes"><option>ATR 72</option><option>Q400</option><option>B737</option><option>B737 MAX</option><option>E190</option><option>A320</option><option>CRJ900</option><option>B787</option><option>C208 Caravan</option></datalist>
+    </div>
+    <div class="panel">
+      <h2>Fleet</h2>
+      <p class="note">Every flight needs a captain and a first officer rated on its type, plus the cabin crew set here.</p>
+      <div class="tablewrap"><table class="list" id="fleetlist"></table></div>
+    </div>
+  </section>
+  <section id="tab-crew" hidden>
+    <div class="panel">
+      <h2>Add crew member</h2>
+      <form class="form" id="addcrew"></form>
+    </div>
+    <div class="panel">
+      <h2>Crew list</h2>
+      <div class="filters" id="crewfilters"></div>
+      <div class="tablewrap"><table class="list" id="crewlist"></table></div>
+    </div>
+  </section>
+  <section id="tab-rules" hidden>
+    <div class="panel">
+      <h2>Legality and fairness rules</h2>
+      <p class="note">Set these to match your authority's flight time limitations and your company agreement. The planner never breaks a rule to fill a seat; it leaves the seat as open time instead.</p>
+      <div class="rules" id="rules"></div>
+    </div>
+  </section>
+</main>
+<datalist id="airports"></datalist>
+<datalist id="bases"></datalist>
+<dialog id="dlg"><div class="dlg" id="dlgbody"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const DAYS=14, START=new Date(2026,9,5), DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], MAXTRIP=4;
+const RANK={CPT:'Captain',FO:'First officer',CC:'Cabin crew'};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dayDate=d=>{const t=new Date(START);t.setDate(t.getDate()+d);return t};
+const dayLabel=d=>DOW[((d%7)+7)%7]+' '+dayDate(d).getDate();
+const longDay=d=>dayDate(d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+const validTime=t=>/^\d{2}:\d{2}$/.test(t||'');
+const toMin=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
+const hhmm=m=>{m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+const hrs=h=>(Math.round(h*10)/10)+'h';
+const dur=m=>Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');
+const daysText=dow=>dow.length===7?'Daily':dow.length?[...dow].sort().map(k=>DOW[k]).join(', '):'Not scheduled';
+const clone=o=>JSON.parse(JSON.stringify(o));
+const uid=()=>'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const L=(from,to,dep,arr)=>({from,to,dep,arr});
+const legRoute=legs=>legs.length?[legs[0].from,...legs.map(l=>l.to)].join('–'):'No legs';
+const routeOf=p=>p.duties.map(legRoute).join(' / ');
+
+const DEFAULT_FLEET=[{code:'Q400',cc:2},{code:'B737',cc:3}];
+const DEFAULT_PATTERNS=[
+ {code:'LB1',type:'Q400',dow:[0,1,2,3,4,5,6],duties:[[L('LLW','BLZ','06:45','07:30'),L('BLZ','LLW','08:10','08:55'),L('LLW','BLZ','09:35','10:20'),L('BLZ','LLW','10:50','11:35')]]},
+ {code:'LB2',type:'Q400',dow:[0,1,2,3,4,5,6],duties:[[L('LLW','BLZ','17:00','17:45'),L('BLZ','LLW','18:25','19:10')]]},
+ {code:'LN1',type:'Q400',dow:[0,2,4],duties:[[L('LLW','LUN','08:30','09:40'),L('LUN','LLW','10:20','11:30')]]},
+ {code:'LH1',type:'Q400',dow:[1,3,5],duties:[[L('LLW','HRE','14:00','15:15'),L('HRE','LLW','15:55','17:10')]]},
+ {code:'BJ1',type:'Q400',dow:[0,1,2,3,4,5,6],duties:[[L('BLZ','JNB','10:00','12:10'),L('JNB','BLZ','13:10','15:20')]]},
+ {code:'LJ1',type:'B737',dow:[0,1,2,3,4,5,6],duties:[[L('LLW','JNB','09:00','11:10'),L('JNB','LLW','12:10','14:20')]]},
+ {code:'LD1',type:'B737',dow:[0,2,4,6],duties:[[L('LLW','DAR','13:30','15:40'),L('DAR','LLW','16:30','18:40')]]},
+ {code:'LK1',type:'B737',dow:[1,3,5],duties:[[L('LLW','NBO','07:30','10:30'),L('NBO','LLW','11:30','14:30')]]},
+ {code:'LA1',type:'B737',dow:[5],duties:[[L('LLW','ADD','15:00','19:10')],[L('ADD','LLW','10:00','14:10')]]},
+];
+const DEFAULT_RULES={reportBefore:60,releaseAfter:30,maxDutyDay:13,minRest:12,maxDuty7:60,maxBlock:50,maxConsec:5,minDaysOff:4};
+function defaultCrew(){
+ const F=['Chikondi','Thoko','Kondwani','Madalitso','Tiwonge','Chisomo','Mphatso','Limbani','Yamikani','Dalitso','Tamanda','Pemphero','Kumbukani','Chimwemwe','Takondwa','Wezi','Esther','Grace','Mercy','Patience','Lusungu','Temwa','Chifundo','Fatsani','Zione','Tadala','Chawezi','Mayeso','Khumbo','Tawonga','Upile','Atupele','Innocent','Blessings','Joseph','Ruth'];
+ const S=['Banda','Phiri','Mwale','Chirwa','Nyirenda','Kamanga','Gondwe','Mkandawire','Tembo','Mhango','Kumwenda','Msiska','Kachingwe','Mbewe','Jere','Nkhoma','Chisale','Mvula','Soko','Manda','Munthali','Kalua','Chimombo','Zgambo','Longwe','Kalilani'];
+ let n=0;const out=[];
+ const add=(rank,type,base,k)=>{for(let i=0;i<k;i++){out.push({id:'c'+n,name:F[n%F.length]+' '+S[(n*7+3)%S.length],rank,type,base,leave:[]});n++}};
+ add('CPT','Q400','LLW',5);add('CPT','B737','LLW',4);add('CPT','Q400','BLZ',3);
+ add('FO','Q400','LLW',5);add('FO','B737','LLW',4);add('FO','Q400','BLZ',3);
+ add('CC','ALL','LLW',20);add('CC','ALL','BLZ',4);
+ [[0,[2,3]],[6,[8,9,10]],[14,[0,1]],[25,[4,5,6]],[40,[11,12]]].forEach(([i,d])=>{if(out[i])out[i].leave=d});
+ return out;
+}
+const freshState=()=>({fleet:clone(DEFAULT_FLEET),patterns:DEFAULT_PATTERNS.map(p=>({id:uid(),...clone(p)})),crew:defaultCrew(),rules:{...DEFAULT_RULES},intro:true});
+let state;
+try{state=JSON.parse(localStorage.getItem('crew-roster-v2'))}catch(e){state=null}
+if(!state||!state.crew||!state.fleet)state=freshState();
+state.patterns.forEach(p=>{if(!p.duties){p.duties=[p.legs||[]];delete p.legs}});
+state.rules={...DEFAULT_RULES,...state.rules};
+const save=()=>{try{localStorage.setItem('crew-roster-v2',JSON.stringify(state))}catch(e){}};
+const ui={tab:'roster',rank:'ALL',base:'ALL',crewRank:'ALL'};
+let R=null,draft=null;
+
+const fleetOf=code=>state.fleet.find(f=>f.code===code);
+const typeColor=code=>{const i=state.fleet.findIndex(f=>f.code===code);return 'var(--t'+((i<0?0:i)%6)+')'};
+const typeLabel=t=>t==='ALL'?'All types':t;
+const baseOf=p=>p.duties[0]&&p.duties[0][0]?p.duties[0][0].from:'';
+const bases=()=>[...new Set([...state.patterns.map(baseOf).filter(Boolean),...state.crew.map(c=>c.base)])].sort();
+
+function timeline(legs){
+ const out=[];let t=null;
+ for(const l of legs){
+  if(!validTime(l.dep)||!validTime(l.arr))return null;
+  let d=toMin(l.dep);if(t!==null)while(d<t)d+=1440;
+  let a=toMin(l.arr);while(a<=d)a+=1440;
+  out.push({d,a});t=a;
+ }
+ return out;
+}
+// A flight is a trip of one or more duty days. Each day after the first follows a night stop.
+function derive(p){
+ if(!p.duties.length||p.duties.some(d=>!d.length))return null;
+ const r=state.rules,days=[];
+ for(let k=0;k<p.duties.length;k++){
+  const legs=p.duties[k],tl=timeline(legs);if(!tl)return null;const off=k*1440;
+  days.push({legs,tl,off,rep:off+tl[0].d-r.reportBefore,rel:off+tl[tl.length-1].a+r.releaseAfter,block:tl.reduce((s,x)=>s+x.a-x.d,0)/60,end:legs[legs.length-1].to});
+ }
+ return {base:baseOf(p),route:routeOf(p),days,block:days.reduce((s,d)=>s+d.block,0),rep:days[0].rep,rel:days[days.length-1].rel,
+  maxDuty:Math.max(...days.map(d=>(d.rel-d.rep)/60)),nights:days.slice(0,-1).map(d=>d.end)};
+}
+function validate(p,selfId){
+ const e=[],warn=[],rules=state.rules,multi=p.duties.length>1;
+ if(!p.code.trim())e.push('Give the flight a code, for example LB1.');
+ else if(state.patterns.some(o=>o.id!==selfId&&o.code.toUpperCase()===p.code.trim().toUpperCase()))e.push('Another flight already uses the code '+p.code.toUpperCase()+'.');
+ if(!fleetOf(p.type))e.push('Choose an aircraft type.');
+ if(!p.duties.length||!p.duties[0].length)e.push('Add at least one leg.');
+ p.duties.forEach((legs,k)=>{
+  if(!legs.length&&k>0)e.push('Day '+(k+1)+' has no legs. Add one or remove the day.');
+  legs.forEach((l,i)=>{
+   const n=(multi?'Day '+(k+1)+', leg ':'Leg ')+(i+1);
+   if(!/^[A-Z]{3,4}$/.test(l.from)||!/^[A-Z]{3,4}$/.test(l.to))e.push(n+': enter 3 or 4 letter airport codes.');
+   else if(l.from===l.to)e.push(n+': departure and arrival airport are the same.');
+   if(!validTime(l.dep)||!validTime(l.arr))e.push(n+': set departure and arrival times.');
+   const prev=i>0?legs[i-1]:(k>0?p.duties[k-1][p.duties[k-1].length-1]:null);
+   if(prev&&l.from&&prev.to&&l.from!==prev.to)e.push(n+' must depart from '+prev.to+(i===0?', where the crew night-stopped.':', where the previous leg lands.'));
+  });
+ });
+ const all=p.duties.flat(),last=all[all.length-1],base=baseOf(p);
+ if(last&&last.to&&base&&last.to!==base)e.push(multi?'The trip must finish back at base ('+base+'). Add legs home on the last day, or add another day.':'This day ends at '+last.to+', away from base. Tap Night stop at '+last.to+' to add the next day home.');
+ if(p.duties.length>MAXTRIP)e.push('Trips can be up to '+MAXTRIP+' days.');
+ const d=e.length?null:derive(p);
+ if(d){
+  d.days.forEach((x,k)=>{
+   const du=x.rel-x.rep;
+   if(du>rules.maxDutyDay*60)e.push((multi?'Day '+(k+1)+' duty':'Duty')+' would be '+dur(du)+', over the '+rules.maxDutyDay+'h daily limit in Rules.');
+   x.tl.forEach((t,i)=>{if(i&&t.d-x.tl[i-1].a<20)warn.push((multi?'Day '+(k+1)+', leg ':'Leg ')+(i+1)+' leaves only '+(t.d-x.tl[i-1].a)+' minutes turnaround.')});
+   if(k>0){const rest=x.rep-d.days[k-1].rel;if(rest<rules.minRest*60)e.push('The night stop at '+d.days[k-1].end+' gives only '+dur(Math.max(0,rest))+' rest. Rules need '+rules.minRest+'h, so start day '+(k+1)+' later.')}
+  });
+  if(!state.crew.some(c=>c.base===d.base&&c.rank==='CPT'&&c.type===p.type))warn.push('No '+p.type+' captains are based at '+d.base+' yet.');
+ }
+ if(!p.dow.length)warn.push('No days selected, so this flight will not be rostered.');
+ return {e,warn,d};
+}
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function buildInstances(){
+ const out=[];
+ for(const p of state.patterns){
+  const v=validate(p,p.id);if(v.e.length)continue;const d=v.d,f=fleetOf(p.type);
+  for(let day=0;day<DAYS;day++){
+   if(!p.dow.includes(day%7))continue;
+   const b=day*1440;
+   out.push({id:p.id+'-'+day,code:p.code,p,d,type:p.type,base:d.base,route:d.route,day,days:d.days.map((_,k)=>day+k),
+    start:b+d.rep,end:b+d.rel,block:d.block,periods:d.days.map(x=>({s:b+x.rep,e:b+x.rel})),seats:['CPT','FO',...Array(f.cc).fill('CC')]});
+  }
+ }
+ return out;
+}
+const eligible=(c,inst,rank)=>c.rank===rank&&(c.type===inst.type||(c.rank==='CC'&&c.type==='ALL'))&&c.base===inst.base;
+
+function check(c,inst,list,rules){
+ if(inst.days.some(x=>c.leave.includes(x)))return inst.days.length>1?'On leave during this trip':'On leave';
+ for(const a of list){
+  if(a.days.some(x=>inst.days.includes(x)))return 'Already on '+a.code+' ('+dayLabel(a.day)+')';
+  if(a.start<inst.end&&inst.start<a.end)return 'Overlaps '+a.code;
+  if(a.end<=inst.start&&inst.start-a.end<rules.minRest*60)return 'Only '+dur(inst.start-a.end)+' rest after '+a.code+' ('+dayLabel(a.days[a.days.length-1])+')';
+  if(inst.end<=a.start&&a.start-inst.end<rules.minRest*60)return 'Only '+dur(a.start-inst.end)+' rest before '+a.code+' ('+dayLabel(a.day)+')';
+ }
+ const W=7*1440,per=[...list,inst].flatMap(a=>a.periods);
+ const win=(f,t)=>per.reduce((s,x)=>s+Math.max(0,Math.min(x.e,t)-Math.max(x.s,f)),0);
+ if(Math.max(win(inst.end-W,inst.end),win(inst.start,inst.start+W))>rules.maxDuty7*60)return 'Would pass '+rules.maxDuty7+'h duty in 7 days';
+ const blk=list.reduce((s,a)=>s+a.block,0)+inst.block;
+ if(blk>rules.maxBlock+1e-9)return 'Would pass '+rules.maxBlock+'h block for the period ('+hrs(blk)+')';
+ const days=new Set([...list.flatMap(a=>a.days),...inst.days]);
+ if([...days].filter(x=>x<DAYS).length>DAYS-rules.minDaysOff)return 'Would leave fewer than '+rules.minDaysOff+' days off';
+ let lo=inst.days[0],hi=inst.days[inst.days.length-1];while(days.has(lo-1))lo--;while(days.has(hi+1))hi++;
+ if(hi-lo+1>rules.maxConsec)return 'Would work '+(hi-lo+1)+' days in a row';
+ return null;
+}
+function cost(c,inst,list){
+ const blk=list.reduce((s,a)=>s+a.block,0);
+ let sc=blk+list.length*1.5;const why=[hrs(blk)+' block and '+list.length+' duties so far'];
+ const first=inst.days[0],lastD=inst.days[inst.days.length-1];
+ const prev=list.find(a=>a.days[a.days.length-1]===first-1),next=list.find(a=>a.days[0]===lastD+1);
+ if(prev&&((prev.end%1440)+1440)%1440>=18*60&&((inst.start%1440)+1440)%1440<7*60){sc+=4;why.push('late finish then early start penalised')}
+ if(prev||next){sc-=1;why.push('keeps days off together')}
+ return {sc:Math.round(sc*10)/10,why};
+}
+function solve(){
+ const rules=state.rules,insts=buildInstances(),byCrew=new Map(state.crew.map(c=>[c.id,[]]));
+ const seats=[];
+ insts.forEach(inst=>inst.seats.forEach((rank,k)=>seats.push({inst,rank,k,crew:null,log:{alts:[],rej:[],notes:[]}})));
+ seats.forEach(s=>s.pool=state.crew.filter(c=>eligible(c,s.inst,s.rank)));
+ // Multi-day trips first on each day: they are hardest to place
+ seats.sort((a,b)=>a.inst.day-b.inst.day||b.inst.days.length-a.inst.days.length||a.pool.length-b.pool.length||a.inst.start-b.inst.start);
+ const assign=s=>{
+  const cand=[],rej=[];
+  for(const c of s.pool){const list=byCrew.get(c.id),r=check(c,s.inst,list,rules);if(r)rej.push({c,r});else cand.push({c,...cost(c,s.inst,list)})}
+  cand.sort((a,b)=>a.sc-b.sc||a.c.name.localeCompare(b.c.name));
+  s.log.rej=rej;s.log.alts=cand.slice(1,4);s.log.legal=cand.length;
+  if(cand.length){s.crew=cand[0].c;s.log.pick=cand[0];byCrew.get(s.crew.id).push(s.inst)}
+ };
+ seats.forEach(assign);
+ const rnd=mulberry32(7),load=id=>byCrew.get(id).reduce((t,a)=>t+a.block,0);
+ let moves=0;const filled=seats.filter(s=>s.crew);
+ for(let it=0;it<4000&&filled.length;it++){
+  const s=filled[Math.floor(rnd()*filled.length)],from=s.crew,lf=load(from.id);
+  let best=null,bl=Infinity;
+  for(const c of s.pool){
+   if(c===from)continue;const lc=load(c.id);
+   if(lc+s.inst.block>=lf||lc>=bl)continue;
+   if(check(c,s.inst,byCrew.get(c.id),rules))continue;
+   best=c;bl=lc;
+  }
+  if(best){
+   const l=byCrew.get(from.id);l.splice(l.indexOf(s.inst),1);byCrew.get(best.id).push(s.inst);
+   s.log.notes=['Rebalanced: first given to '+from.name+' ('+hrs(lf)+' block), moved to '+best.name+' ('+hrs(bl)+' block) to even out hours.'];
+   s.crew=best;moves++;
+  }
+ }
+ seats.filter(s=>!s.crew).forEach(assign);
+ seats.forEach((s,i)=>s.idx=i);
+ return {insts,seats,byCrew,moves};
+}
+function rebuild(){R=solve();render()}
+
+/* ---------- Rendering ---------- */
+function renderSummary(){
+ const total=R.seats.length,open=R.seats.filter(s=>!s.crew).length;
+ const blk=id=>R.byCrew.get(id).reduce((t,a)=>t+a.block,0);
+ const range=ranks=>{const v=state.crew.filter(c=>ranks.includes(c.rank)).map(c=>blk(c.id));return v.length?hrs(Math.min(...v))+'–'+hrs(Math.max(...v)):'–'};
+ const bad=state.patterns.filter(p=>validate(p,p.id).e.length).length;
+ $('#summary').innerHTML=`
+  <div><b>${total-open}/${total}</b><span>Seats filled</span></div>
+  <div class="${open?'bad':'good'}"><b>${open}</b><span>Open time</span></div>
+  <div class="good"><b>0</b><span>Rule breaks</span></div>
+  <div><b>${range(['CPT','FO'])}</b><span>Block per pilot</span></div>
+  <div><b>${range(['CC'])}</b><span>Block per cabin crew</span></div>
+  ${bad?`<div class="bad"><b>${bad}</b><span>Flights need fixing</span></div>`:''}`;
+ const os=R.seats.filter(s=>!s.crew).sort((a,b)=>a.inst.start-b.inst.start);
+ $('#opentime').innerHTML=os.length?`<h2>Open time</h2><p class="note">No legal crew member was available for these seats. Tap one to see what blocked each candidate.</p><div class="openlist">${os.map(s=>`<button class="strip open" data-seat="${s.idx}"><span class="cd">${esc(s.inst.code)} ${RANK[s.rank]}</span><span class="rt">${dayLabel(s.inst.day)} ${esc(s.inst.route)}</span></button>`).join('')}</div>`:'';
+ $('#intro').hidden=!state.intro;
+}
+function renderFilters(){
+ const f=(k,v,t)=>`<button class="chip" data-f="${k}" data-v="${esc(v)}" aria-pressed="${ui[k]===v}">${esc(t)}</button>`;
+ $('#filters').innerHTML=f('rank','ALL','Everyone')+f('rank','CPT','Captains')+f('rank','FO','First officers')+f('rank','CC','Cabin crew')+'<span style="width:12px"></span>'+f('base','ALL','All bases')+bases().map(b=>f('base',b,b)).join('');
+ $('#legend').innerHTML=state.fleet.map(t=>`<span><i class="sw" style="background:${typeColor(t.code)}"></i>${esc(t.code)}</span>`).join('')+'<span><i class="sw" style="background:var(--warn)"></i>Open time or night stop</span><span>Tap a duty to see why that crew member got it. Tap an empty day to add or remove leave.</span>';
+}
+function stripHTML(s,k){
+ const i=s.inst,x=i.d.days[k],multi=i.days.length>1;
+ return `<button class="strip${k>0?' cont':''}" style="border-left-color:${typeColor(i.type)}" data-seat="${s.idx}"><span class="cd">${esc(i.code)}${multi?' day '+(k+1):''}</span><span class="rt">${esc(legRoute(x.legs))}</span><span class="tm">${hhmm(x.tl[0].d)}–${hhmm(x.tl[x.tl.length-1].a)}</span>${k<i.days.length-1?`<span class="ns">Night stop ${esc(x.end)}</span>`:''}</button>`;
+}
+function renderGrid(){
+ const map=new Map();R.seats.forEach(s=>{if(s.crew)s.inst.days.forEach((d,k)=>map.set(s.crew.id+'|'+d,[s,k]))});
+ const crew=state.crew.filter(c=>(ui.rank==='ALL'||c.rank===ui.rank)&&(ui.base==='ALL'||c.base===ui.base));
+ let h='<thead><tr><th class="who">Crew</th>';
+ for(let d=0;d<DAYS;d++)h+=`<th class="${d%7>4?'we':''}">${dayLabel(d)}</th>`;
+ h+='<th>Block</th></tr></thead><tbody>';
+ for(const c of crew){
+  h+=`<tr><th class="who" scope="row"><span class="nm">${esc(c.name)}</span><span class="meta">${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</span></th>`;
+  for(let d=0;d<DAYS;d++){
+   const m=map.get(c.id+'|'+d);
+   if(m)h+=`<td>${stripHTML(m[0],m[1])}</td>`;
+   else if(c.leave.includes(d))h+=`<td><button class="cell leave" data-leave="${c.id}|${d}" aria-label="Remove leave for ${esc(c.name)} on ${dayLabel(d)}">Leave</button></td>`;
+   else h+=`<td><button class="cell" data-leave="${c.id}|${d}" aria-label="Add leave for ${esc(c.name)} on ${dayLabel(d)}"></button></td>`;
+  }
+  h+=`<td class="tot">${hrs(R.byCrew.get(c.id).reduce((t,a)=>t+a.block,0))}</td></tr>`;
+ }
+ if(!crew.length)h+=`<tr><td colspan="${DAYS+2}" style="padding:16px">No crew match these filters. Add crew on the Crew tab.</td></tr>`;
+ $('#grid').innerHTML=h+'</tbody>';
+}
+function renderPatterns(){
+ if(!state.patterns.length){$('#patterns').innerHTML='<tbody><tr><td>No flights yet. Use Add flight to create your first duty.</td></tr></tbody>';return}
+ $('#patterns').innerHTML='<thead><tr><th>Flight</th><th>Aircraft</th><th>Route</th><th>Departs–arrives</th><th>Block</th><th>Longest duty</th><th>Days</th><th></th></tr></thead><tbody>'+
+ state.patterns.map(p=>{
+  const v=validate(p,p.id),d=v.d,n=p.duties.length;
+  const last=d&&d.days[n-1];
+  return `<tr><td><b>${esc(p.code||'Untitled')}</b></td>
+   <td><span class="tdot" style="background:${typeColor(p.type)}"></span>${esc(p.type)}</td>
+   <td>${esc(routeOf(p))}${n>1?`<div class="note" style="margin:2px 0 0">${n}-day trip, night stop ${esc((d?d.nights:p.duties.slice(0,-1).map(x=>x[x.length-1]?.to)).join(', '))}</div>`:''}${v.e.length?`<div class="warnline">${esc(v.e[0])}</div>`:''}</td>
+   <td>${d?hhmm(d.days[0].tl[0].d)+'–'+hhmm(last.tl[last.tl.length-1].a)+(n>1?' day '+n:''):'–'}</td>
+   <td>${d?dur(d.block*60):'–'}</td><td>${d?dur(d.maxDuty*60):'–'}</td>
+   <td>${daysText(p.dow)}</td>
+   <td class="acts"><button class="btn ghost small" data-editp="${p.id}">Edit</button> <button class="btn ghost small" data-copyp="${p.id}">Copy</button> <button class="btn danger small" data-delp="${p.id}">Delete</button></td></tr>`;
+ }).join('')+'</tbody>';
+}
+function renderFleet(){
+ $('#fleetlist').innerHTML='<thead><tr><th>Aircraft</th><th>Cabin crew needed</th><th>Pilots rated</th><th>Flights</th><th></th></tr></thead><tbody>'+
+ (state.fleet.map(f=>`<tr><td><span class="tdot" style="background:${typeColor(f.code)}"></span><b>${esc(f.code)}</b></td>
+  <td><input type="number" min="0" max="20" value="${f.cc}" data-fleetcc="${esc(f.code)}" aria-label="Cabin crew needed on ${esc(f.code)}"></td>
+  <td>${state.crew.filter(c=>c.rank!=='CC'&&c.type===f.code).length}</td>
+  <td>${state.patterns.filter(p=>p.type===f.code).length}</td>
+  <td class="acts"><button class="btn danger small" data-delfleet="${esc(f.code)}">Remove</button></td></tr>`).join('')||'<tr><td colspan="5">No aircraft yet. Add one above.</td></tr>')+'</tbody>';
+}
+function crewFormFields(c){
+ c=c||{name:'',rank:'CPT',type:state.fleet[0]?.code||'',base:bases()[0]||'LLW'};
+ const opts=[...state.fleet.map(f=>f.code),'ALL'].map(t=>`<option value="${esc(t)}" ${c.type===t?'selected':''}>${t==='ALL'?'All types (cabin crew)':esc(t)}</option>`).join('');
+ return `<label>Name<input name="name" required value="${esc(c.name)}" placeholder="e.g. Tiwonge Banda"></label>
+  <label>Position<select name="rank">${Object.entries(RANK).map(([k,v])=>`<option value="${k}" ${c.rank===k?'selected':''}>${v}</option>`).join('')}</select></label>
+  <label>Aircraft rating<select name="type">${opts}</select></label>
+  <label>Base<input name="base" class="code" list="bases" required maxlength="4" value="${esc(c.base)}"></label>`;
+}
+function renderCrew(){
+ $('#addcrew').innerHTML=crewFormFields()+'<button class="btn" type="submit">Add crew member</button>';
+ const f=(v,t)=>`<button class="chip" data-crewrank="${v}" aria-pressed="${ui.crewRank===v}">${t}</button>`;
+ $('#crewfilters').innerHTML=f('ALL','Everyone')+f('CPT','Captains')+f('FO','First officers')+f('CC','Cabin crew');
+ const list=state.crew.filter(c=>ui.crewRank==='ALL'||c.rank===ui.crewRank);
+ $('#crewlist').innerHTML='<thead><tr><th>Name</th><th>Position</th><th>Aircraft</th><th>Base</th><th>Trips</th><th>Block</th><th>Leave days</th><th></th></tr></thead><tbody>'+
+ (list.map(c=>{const l=R.byCrew.get(c.id)||[];return `<tr><td>${esc(c.name)}</td><td>${RANK[c.rank]}</td><td>${esc(typeLabel(c.type))}</td><td>${esc(c.base)}</td><td>${l.length}</td><td>${hrs(l.reduce((t,a)=>t+a.block,0))}</td><td>${c.leave.length}</td><td class="acts"><button class="btn ghost small" data-editc="${c.id}">Edit</button> <button class="btn danger small" data-del="${c.id}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="8">No crew yet.</td></tr>')+'</tbody>';
+}
+function renderRules(){
+ const r=state.rules,f=(k,t,hint,min,max)=>`<label>${t}<input type="number" data-rule="${k}" value="${r[k]}" min="${min}" max="${max}" step="1"><small>${hint}</small></label>`;
+ $('#rules').innerHTML=
+  f('reportBefore','Report before first departure (minutes)','Sets the report time for every duty day',15,180)+
+  f('releaseAfter','Release after last arrival (minutes)','Sets the release time for every duty day',0,120)+
+  f('maxDutyDay','Max duty in one day (hours)','Flights longer than this cannot be saved',6,18)+
+  f('minRest','Minimum rest (hours)','Between duties, including night stops away from base',8,24)+
+  f('maxDuty7','Max duty in any 7 days (hours)','Rolling window',30,80)+
+  f('maxBlock','Max block in the 14-day period (hours)','50h is roughly 100h per 28 days',20,100)+
+  f('maxConsec','Max days on duty in a row','Night stop days count as duty days',2,7)+
+  f('minDaysOff','Minimum days off in the period','Leave counts as a day off',1,10);
+}
+function renderDatalists(){
+ const apts=new Set(['LLW','BLZ','MZU','JNB','LUN','HRE','DAR','NBO','ADD','CPT','DXB','MPM','LAD']);
+ state.patterns.forEach(p=>p.duties.flat().forEach(l=>{apts.add(l.from);apts.add(l.to)}));
+ $('#airports').innerHTML=[...apts].filter(Boolean).sort().map(a=>`<option value="${esc(a)}">`).join('');
+ $('#bases').innerHTML=bases().map(b=>`<option value="${esc(b)}">`).join('');
+}
+function render(){
+ $('#period').textContent='Two weeks, '+longDay(0)+' to '+longDay(DAYS-1)+' 2026. The planner assigns every seat within your duty limits, evens out hours, and explains each choice.';
+ renderDatalists();renderSummary();renderFilters();renderGrid();renderPatterns();renderFleet();renderCrew();renderRules();
+}
+
+/* ---------- Dialogs ---------- */
+const dlg=$('#dlg');
+function openSeat(s){
+ const i=s.inst,crewOn=R.seats.filter(x=>x.inst===i&&x.crew),multi=i.days.length>1;
+ let rows='';
+ i.d.days.forEach((x,k)=>{
+  x.legs.forEach((l,j)=>rows+=`<tr>${multi?`<td>${j?'':dayLabel(i.day+k)}</td>`:''}<td>${esc(l.from)}</td><td>${esc(l.to)}</td><td>${l.dep}</td><td>${l.arr}</td></tr>`);
+  if(k<i.d.days.length-1)rows+=`<tr><td colspan="${multi?5:4}" class="reason">Night stop at ${esc(x.end)}, ${dur(i.d.days[k+1].rep-x.rel)} rest</td></tr>`;
+ });
+ let h=`<button class="btn ghost small close" data-close>Close</button><h3>${esc(i.code)} ${esc(i.route)}</h3>
+ <p class="note">${longDay(i.day)}${multi?', '+i.days.length+'-day trip':''}. ${esc(i.type)} from ${esc(i.base)}. Report ${hhmm(i.start)}, final release ${hhmm(i.end)}${multi?' on '+dayLabel(i.days[i.days.length-1]):''}. Block ${dur(i.block*60)}.</p>
+ <div class="tablewrap"><table class="list"><thead><tr>${multi?'<th>Day</th>':''}<th>From</th><th>To</th><th>Departs</th><th>Arrives</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+ if(s.crew){
+  h+=`<h4>${RANK[s.rank]}: ${esc(s.crew.name)}</h4>`;
+  if(s.log.notes.length)h+=`<p>${esc(s.log.notes[0])}</p>`;
+  else if(s.log.pick)h+=`<p>Best fit of ${s.log.legal} legal ${RANK[s.rank].toLowerCase()}${s.log.legal>1?'s':''} (${esc(s.log.pick.why.join(', '))}).</p>`;
+  if(s.log.alts.length&&!s.log.notes.length)h+=`<h4>Next best</h4><ul>${s.log.alts.map(a=>`<li>${esc(a.c.name)} <span class="reason">${esc(a.why[0])}</span></li>`).join('')}</ul>`;
+ }else h+=`<h4>Open: ${RANK[s.rank]}</h4><p>${s.pool.length?'Every qualified crew member at '+esc(i.base)+' is blocked by a rule or leave.':'Nobody at '+esc(i.base)+' is rated for this seat on the '+esc(i.type)+'.'} You can add crew, move leave, or change the flight days.</p>`;
+ if(s.log.rej.length)h+=`<h4>Not legal for this trip</h4><ul>${s.log.rej.slice(0,10).map(r=>`<li>${esc(r.c.name)} <span class="reason">${esc(r.r)}</span></li>`).join('')}</ul>`;
+ if(crewOn.length)h+=`<h4>Crew on this flight</h4><ul>${crewOn.map(x=>`<li>${RANK[x.rank]} ${esc(x.crew.name)}</li>`).join('')}</ul>`;
+ $('#dlgbody').innerHTML=h;dlg.showModal();
+}
+function openFlightEditor(p,isNew){
+ if(!state.fleet.length){toast('Add an aircraft type first.');return}
+ draft=clone(p);
+ $('#dlgbody').innerHTML=`<form id="pform" novalidate>
+  <button class="btn ghost small close" type="button" data-close>Close</button>
+  <h3>${isNew?'Add flight':'Edit flight '+esc(p.code)}</h3>
+  <div class="form">
+   <label>Flight code<input class="code" data-pf="code" maxlength="8" value="${esc(draft.code)}" placeholder="LB1"></label>
+   <label>Aircraft<select data-pf="type">${state.fleet.map(f=>`<option ${f.code===draft.type?'selected':''}>${esc(f.code)}</option>`).join('')}</select></label>
+  </div>
+  <fieldset><legend>Starts on</legend><div class="days">${DOW.map((d,k)=>`<button type="button" class="chip" data-pdow="${k}" aria-pressed="${draft.dow.includes(k)}">${d}</button>`).join('')}
+   <button type="button" class="chip" data-pdow="all">Every day</button></div></fieldset>
+  <h4>Legs</h4>
+  <p class="note">Enter local times. An arrival earlier than the departure is read as the next day. Use Add stop to route a leg via another airport. To end the day away from base, finish the last leg there and tap Night stop.</p>
+  <div id="legs"></div>
+  <div class="actions" style="margin-top:10px">
+   <button type="button" class="btn ghost small" id="addleg">Add leg</button>
+   <button type="button" class="btn ghost small" id="addreturn">Add return to base</button>
+   <button type="button" class="btn small" id="addday" hidden>Night stop and continue next day</button>
+  </div>
+  <p class="hint" id="awayhint" hidden></p>
+  <div class="psum" id="psum"></div>
+  <ul class="errs" id="perr"></ul>
+  <div class="actions"><button class="btn" type="submit">Save flight</button><button type="button" class="btn ghost" data-close>Cancel</button></div>
+ </form>`;
+ renderLegs();dlg.showModal();
+}
+function renderLegs(){
+ const multi=draft.duties.length>1;let h='';
+ draft.duties.forEach((legs,k)=>{
+  if(multi)h+=`<div class="dayhead"><span>Day ${k+1}</span>${k>0?`<button type="button" class="btn danger small" data-rmday="${k}">Remove day ${k+1}</button>`:''}</div>`;
+  h+=legs.map((l,i)=>`<div class="leg">
+   <span class="ln">Leg ${i+1}</span>
+   <label>From<input class="code" data-dd="${k}" data-leg="${i}" data-k="from" list="airports" maxlength="4" value="${esc(l.from)}"></label>
+   <label>To<input class="code" data-dd="${k}" data-leg="${i}" data-k="to" list="airports" maxlength="4" value="${esc(l.to)}"></label>
+   <label>Departs<input type="time" data-dd="${k}" data-leg="${i}" data-k="dep" value="${esc(l.dep)}"></label>
+   <label>Arrives<input type="time" data-dd="${k}" data-leg="${i}" data-k="arr" value="${esc(l.arr)}"></label>
+   <div class="legacts"><button type="button" class="btn ghost small" data-splitleg="${k}|${i}" aria-label="Add a stop on leg ${i+1}">Add stop</button><button type="button" class="btn danger small" data-rmleg="${k}|${i}" aria-label="Remove leg ${i+1}">Remove</button></div>
+  </div>${i<legs.length-1?`<div class="ground"><span id="gnd-${k}-${i}"></span>${l.from!==legs[i+1].to?`<button type="button" class="btn ghost small" data-mergeleg="${k}|${i}">Remove stop</button>`:''}</div>`:''}`).join('')||'<p class="note">No legs yet.</p>';
+  if(k<draft.duties.length-1)h+=`<div class="nightstop" id="ns-${k}"></div>`;
+ });
+ $('#legs').innerHTML=h;updatePSum();
+}
+function updatePSum(){
+ const p={...draft,code:draft.code.trim().toUpperCase()},v=validate(p,draft.id),f=fleetOf(p.type);
+ const base=baseOf(draft),lastDay=draft.duties[draft.duties.length-1]||[],lastLeg=lastDay[lastDay.length-1];
+ if(v.d){
+  const d=v.d,multi=d.days.length>1;
+  $('#psum').innerHTML=`Base <b>${esc(d.base)}</b>. `+d.days.map((x,k)=>`${multi?'<b>Day '+(k+1)+':</b> ':''}report <b>${hhmm(x.rep)}</b>, release <b>${hhmm(x.rel)}</b>, duty <b>${dur(x.rel-x.rep)}</b>.`+(k<d.days.length-1?` Night stop at <b>${esc(x.end)}</b>, rest <b>${dur(d.days[k+1].rep-x.rel)}</b>.`:'')).join(' ')+
+   ` Total block <b>${dur(d.block*60)}</b>. Needs 2 pilots and ${f?f.cc:0} cabin crew on the ${esc(p.type)}.`+v.warn.map(w=>`<div class="warnline">${esc(w)}</div>`).join('');
+ }else $('#psum').innerHTML='Complete the legs to see report, release and duty times.';
+ const away=lastLeg&&/^[A-Z]{3,4}$/.test(lastLeg.to)&&base&&lastLeg.to!==base;
+ $('#addday').hidden=!away||draft.duties.length>=MAXTRIP;
+ if(away)$('#addday').textContent='Night stop at '+lastLeg.to+' and continue next day';
+ $('#awayhint').hidden=!away;
+ if(away)$('#awayhint').textContent='The '+(draft.duties.length>1?'trip':'day')+' ends at '+lastLeg.to+', away from base '+base+'. Crew will need to night-stop there and fly home on a following day.';
+ $('#perr').innerHTML='';
+ draft.duties.forEach((legs,k)=>{
+  const tl=timeline(legs);
+  legs.forEach((l,i)=>{const g=document.getElementById('gnd-'+k+'-'+i);if(g)g.textContent=tl&&tl[i+1]?'On the ground at '+(l.to||'the stop')+' for '+dur(tl[i+1].d-tl[i].a):'Stop at '+(l.to||'the stop')});
+  const ns=document.getElementById('ns-'+k);
+  if(ns){const end=legs[legs.length-1]?.to||'the outstation';ns.textContent='Night stop at '+end+(v.d?', '+dur(v.d.days[k+1].rep-v.d.days[k].rel)+' rest before day '+(k+2)+' report':'');}
+ });
+ return v;
+}
+function openCrewEditor(c){
+ $('#dlgbody').innerHTML=`<form id="cform" data-id="${c.id}"><button class="btn ghost small close" type="button" data-close>Close</button><h3>Edit ${esc(c.name)}</h3>
+  <div class="form">${crewFormFields(c)}</div><ul class="errs" id="cerr"></ul>
+  <div class="actions" style="margin-top:14px"><button class="btn" type="submit">Save changes</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>`;
+ dlg.showModal();
+}
+function readCrewForm(form){
+ const fd=new FormData(form),name=String(fd.get('name')).trim(),rank=fd.get('rank'),type=fd.get('type'),base=String(fd.get('base')).trim().toUpperCase();
+ const err=[];
+ if(!name)err.push('Enter a name.');
+ if(!/^[A-Z]{3,4}$/.test(base))err.push('Enter a 3 or 4 letter base code.');
+ if(rank!=='CC'&&type==='ALL')err.push('Pilots need one aircraft rating.');
+ return {name,rank,type,base,err};
+}
+let pending=null;
+function askConfirm(title,msg,label,fn){
+ pending=fn;
+ $('#dlgbody').innerHTML=`<h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="actions" style="margin-top:16px"><button class="btn danger-solid" id="confirmyes">${esc(label)}</button><button class="btn ghost" data-close>Cancel</button></div>`;
+ dlg.showModal();$('#confirmyes').focus();
+}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3000)}
+const commit=msg=>{save();rebuild();if(msg)toast(msg)};
+const kI=v=>v.split('|').map(Number);
+const legDur=l=>validTime(l.dep)&&validTime(l.arr)?((toMin(l.arr)-toMin(l.dep))+1440)%1440:null;
+
+/* ---------- Events ---------- */
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
+ if(ds.tab){ui.tab=ds.tab;document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));['roster','flights','fleet','crew','rules'].forEach(k=>$('#tab-'+k).hidden=k!==ui.tab);return}
+ if(b.id==='confirmyes'){const fn=pending;pending=null;dlg.close();if(fn)fn();return}
+ if(ds.close!==undefined){dlg.close();return}
+ if(ds.seat){openSeat(R.seats[+ds.seat]);return}
+ if(ds.f){ui[ds.f]=ds.v;renderFilters();renderGrid();return}
+ if(ds.crewrank){ui.crewRank=ds.crewrank;renderCrew();return}
+ if(ds.leave){
+  const[id,d]=ds.leave.split('|'),c=state.crew.find(x=>x.id===id),day=+d,k=c.leave.indexOf(day);
+  if(k>=0)c.leave.splice(k,1);else c.leave.push(day);
+  commit((k>=0?'Leave removed for ':'Leave added for ')+c.name+' on '+dayLabel(day)+'. Roster rebuilt.');return;
+ }
+ if(b.id==='addflight'){const base=bases()[0]||'LLW';openFlightEditor({id:uid(),code:'',type:state.fleet[0]?.code,dow:[0,1,2,3,4,5,6],duties:[[L(base,'','08:00','09:00')]]},true);return}
+ if(ds.editp){openFlightEditor(state.patterns.find(p=>p.id===ds.editp),false);return}
+ if(ds.copyp){const p=clone(state.patterns.find(x=>x.id===ds.copyp));p.id=uid();p.code=p.code+'B';openFlightEditor(p,true);return}
+ if(ds.delp){const p=state.patterns.find(x=>x.id===ds.delp);askConfirm('Delete flight '+p.code+'?','Its duties will be removed from the roster.','Delete flight',()=>{state.patterns=state.patterns.filter(x=>x!==p);commit('Flight '+p.code+' deleted. Roster rebuilt.')});return}
+ if(draft){
+  const lastDay=draft.duties[draft.duties.length-1],base=baseOf(draft);
+  if(ds.pdow!==undefined){
+   if(ds.pdow==='all')draft.dow=draft.dow.length===7?[]:[0,1,2,3,4,5,6];
+   else{const k=+ds.pdow,j=draft.dow.indexOf(k);j>=0?draft.dow.splice(j,1):draft.dow.push(k)}
+   document.querySelectorAll('[data-pdow]').forEach(x=>{if(x.dataset.pdow!=='all')x.setAttribute('aria-pressed',draft.dow.includes(+x.dataset.pdow))});updatePSum();return;
+  }
+  if(b.id==='addleg'){const last=lastDay[lastDay.length-1]||[...draft.duties.flat()].pop();const t=last&&validTime(last.arr)?hhmm(toMin(last.arr)+45):'08:00';lastDay.push(L(last?last.to:base,'',t,''));renderLegs();document.querySelector(`[data-dd="${draft.duties.length-1}"][data-leg="${lastDay.length-1}"][data-k="to"]`)?.focus();return}
+  if(b.id==='addreturn'){const last=lastDay[lastDay.length-1];if(!last){toast('Add a leg first.');return}
+   const ln=legDur(last);if(ln!==null){const dep=toMin(last.arr)+45;lastDay.push(L(last.to,base,hhmm(dep),hhmm(dep+ln)))}else lastDay.push(L(last.to,base,'',''));renderLegs();return}
+  if(b.id==='addday'){const last=lastDay[lastDay.length-1];if(!last||!last.to){toast('Finish the last leg first.');return}
+   const ln=legDur(draft.duties[0][0])??120;draft.duties.push([L(last.to,base,'09:00',hhmm(540+ln))]);renderLegs();
+   toast('Day '+draft.duties.length+' added. Crew night-stop at '+last.to+'. Check the return times.');return}
+  if(ds.rmday!==undefined){const k=+ds.rmday;draft.duties.splice(k,1);renderLegs();toast('Day '+(k+1)+' removed.');return}
+  if(ds.rmleg){const[k,i]=kI(ds.rmleg);draft.duties[k].splice(i,1);if(!draft.duties[k].length&&draft.duties.length>1)draft.duties.splice(k,1);renderLegs();return}
+  if(ds.splitleg){
+   const[k,i]=kI(ds.splitleg),legs=draft.duties[k],l=legs[i],a={from:l.from,to:'',dep:l.dep,arr:''},c={from:'',to:l.to,dep:'',arr:''};
+   const total=legDur(l);if(total!==null){const d=toMin(l.dep),half=Math.max(20,Math.round((total||60)/10)*5);a.arr=hhmm(d+half);c.dep=hhmm(d+half+40);c.arr=hhmm(toMin(l.arr)+40)}
+   legs.splice(i,1,a,c);renderLegs();document.querySelector(`[data-dd="${k}"][data-leg="${i}"][data-k="to"]`)?.focus();
+   toast('Stop added. Enter the stop airport, then check the times.');return}
+  if(ds.mergeleg){const[k,i]=kI(ds.mergeleg),legs=draft.duties[k],a=legs[i],c=legs[i+1];legs.splice(i,2,{from:a.from,to:c.to,dep:a.dep,arr:c.arr});renderLegs();toast('Stop at '+(a.to||'the airport')+' removed. Legs joined into one.');return}
+ }
+ if(ds.delfleet){const code=ds.delfleet,np=state.patterns.filter(p=>p.type===code).length,nc=state.crew.filter(c=>c.type===code).length;
+  if(np||nc){toast(code+' is used by '+np+' flight'+(np===1?'':'s')+' and '+nc+' crew. Move or delete them first.');return}
+  askConfirm('Remove '+code+'?','It will no longer be available for flights or crew ratings.','Remove aircraft',()=>{state.fleet=state.fleet.filter(f=>f.code!==code);commit(code+' removed.')});return}
+ if(ds.editc){openCrewEditor(state.crew.find(c=>c.id===ds.editc));return}
+ if(ds.del){const c=state.crew.find(x=>x.id===ds.del);askConfirm('Remove '+c.name+'?','They will be taken off the crew list and the roster will be rebuilt.','Remove crew member',()=>{state.crew=state.crew.filter(x=>x!==c);commit(c.name+' removed. Roster rebuilt.')});return}
+ if(b.id==='hideintro'){state.intro=false;save();$('#intro').hidden=true;return}
+ if(b.id==='build'){rebuild();toast('Roster built: '+R.seats.filter(s=>s.crew).length+' of '+R.seats.length+' seats filled.');return}
+ if(b.id==='reset'){askConfirm('Reset to sample data?','This replaces all your aircraft, flights, crew and rules.','Reset everything',()=>{state=freshState();commit('Sample data restored.')})}
+});
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+dlg.addEventListener('close',()=>{draft=null;pending=null});
+document.addEventListener('input',e=>{
+ const t=e.target;if(!draft)return;
+ if(t.dataset.leg!==undefined){let v=t.value;const k=+t.dataset.dd,i=+t.dataset.leg,key=t.dataset.k,legs=draft.duties[k];
+  if(key==='from'||key==='to'){v=v.toUpperCase().replace(/[^A-Z]/g,'');t.value=v}
+  const old=legs[i][key];legs[i][key]=v;
+  if(key==='to'){
+   const next=legs[i+1]||(i===legs.length-1&&draft.duties[k+1]?draft.duties[k+1][0]:null);
+   if(next&&(next.from===''||next.from===old)){next.from=v;const nk=legs[i+1]?k:k+1,ni=legs[i+1]?i+1:0;const n=document.querySelector(`[data-dd="${nk}"][data-leg="${ni}"][data-k="from"]`);if(n)n.value=v}
+  }
+  updatePSum();return}
+ if(t.dataset.pf){draft[t.dataset.pf]=t.value;updatePSum()}
+});
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.dataset.rule){const k=t.dataset.rule,v=Math.round(+t.value);
+  if(!Number.isFinite(v)||v<+t.min||v>+t.max){t.value=state.rules[k];toast('Enter a value from '+t.min+' to '+t.max+'.');return}
+  state.rules[k]=v;save();R=solve();renderSummary();renderGrid();renderPatterns();renderCrew();toast('Rule updated. Roster rebuilt.');return}
+ if(t.dataset.fleetcc){const v=Math.round(+t.value),f=fleetOf(t.dataset.fleetcc);
+  if(!Number.isFinite(v)||v<0||v>20){t.value=f.cc;toast('Enter 0 to 20 cabin crew.');return}
+  f.cc=v;commit('Cabin crew on '+f.code+' set to '+v+'. Roster rebuilt.')}
+});
+document.addEventListener('submit',e=>{
+ const f=e.target;e.preventDefault();
+ if(f.id==='pform'){
+  draft.code=draft.code.trim().toUpperCase();const v=updatePSum();
+  if(v.e.length){$('#perr').innerHTML=v.e.map(x=>`<li>${esc(x)}</li>`).join('');$('#perr').scrollIntoView({block:'nearest'});return}
+  const p=clone(draft);const i=state.patterns.findIndex(x=>x.id===p.id);
+  if(i>=0)state.patterns[i]=p;else state.patterns.push(p);
+  dlg.close();commit('Flight '+p.code+' saved. Roster rebuilt.');return;
+ }
+ if(f.id==='addcrew'||f.id==='cform'){
+  const r=readCrewForm(f);
+  if(r.err.length){if(f.id==='cform')$('#cerr').innerHTML=r.err.map(x=>`<li>${esc(x)}</li>`).join('');else toast(r.err[0]);return}
+  if(f.id==='addcrew'){state.crew.push({id:uid(),name:r.name,rank:r.rank,type:r.type,base:r.base,leave:[]});commit(r.name+' added. Roster rebuilt.')}
+  else{const c=state.crew.find(x=>x.id===f.dataset.id);Object.assign(c,{name:r.name,rank:r.rank,type:r.type,base:r.base});dlg.close();commit(r.name+' updated. Roster rebuilt.')}
+  return;
+ }
+ if(f.id==='addfleet'){
+  const fd=new FormData(f),code=String(fd.get('code')).trim().toUpperCase(),cc=Math.round(+fd.get('cc'));
+  if(!code){toast('Enter an aircraft type.');return}
+  if(fleetOf(code)){toast(code+' is already in the fleet.');return}
+  if(!(cc>=0&&cc<=20)){toast('Enter 0 to 20 cabin crew.');return}
+  state.fleet.push({code,cc});f.reset();commit(code+' added. You can now pick it for flights and crew ratings.');
+ }
+});
+rebuild();
+</script>
+
+</body>
+</html>
