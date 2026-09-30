@@ -109,6 +109,14 @@ legend{font-size:14px;font-weight:600;margin-bottom:6px;padding:0}
 .errs{color:var(--err);font-size:14px;margin:0 0 12px;padding-left:18px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
 .toast.show{opacity:1}
+#printarea{display:none}
+@media print{body>*:not(#printarea){display:none!important}#printarea{display:block}:root{padding:0}body{background:#fff;color:#000}}
+textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);resize:vertical}
+.dlg label{margin-top:10px}
+.dlg input{width:100%}
+.person{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+.person .nm{white-space:normal}
+.noemail{color:var(--warn);font-size:14px}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
@@ -126,6 +134,7 @@ legend{font-size:14px;font-weight:600;margin-bottom:6px;padding:0}
 </header>
 <nav class="tabs" role="tablist">
   <button class="tab" role="tab" data-tab="roster" aria-selected="true">Roster</button>
+  <button class="tab" role="tab" data-tab="share" aria-selected="false">Print and email</button>
   <button class="tab" role="tab" data-tab="flights" aria-selected="false">Flights and routes</button>
   <button class="tab" role="tab" data-tab="fleet" aria-selected="false">Aircraft</button>
   <button class="tab" role="tab" data-tab="crew" aria-selected="false">Crew</button>
@@ -147,6 +156,33 @@ legend{font-size:14px;font-weight:600;margin-bottom:6px;padding:0}
     <div class="filters" id="filters"></div>
     <div class="legend" id="legend"></div>
     <div class="gridwrap"><table class="grid" id="grid"></table></div>
+  </section>
+  <section id="tab-share" hidden>
+    <div class="panel">
+      <h2>Print</h2>
+      <p class="note">In the print screen you can also choose Save as PDF. If printing is blocked where you're viewing the app, download the printable copy and print that.</p>
+      <div class="actions">
+        <button class="btn" id="printfull">Print full roster</button>
+        <button class="btn ghost" id="printeach">Print a page for each person</button>
+        <button class="btn ghost" id="dlhtml">Download printable copy</button>
+        <button class="btn ghost" id="dlcsv">Download spreadsheet (CSV)</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Email the full roster</h2>
+      <p class="note">Send the whole roster to any email address, such as crew control or management. Separate several addresses with commas.</p>
+      <div class="form">
+        <label style="flex:1 1 260px">To<input id="fullto" type="email" multiple placeholder="crewcontrol@yourairline.mw"></label>
+        <button class="btn" id="emailfull">Write email</button>
+        <button class="btn ghost" id="emailall">Email all crew</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Roster for each person</h2>
+      <p class="note" id="sharecount"></p>
+      <div class="filters" id="sharefilters"></div>
+      <div id="sharelist"></div>
+    </div>
   </section>
   <section id="tab-flights" hidden>
     <div class="panel">
@@ -190,6 +226,7 @@ legend{font-size:14px;font-weight:600;margin-bottom:6px;padding:0}
     </div>
   </section>
 </main>
+<div id="printarea"></div>
 <datalist id="airports"></datalist>
 <datalist id="bases"></datalist>
 <dialog id="dlg"><div class="dlg" id="dlgbody"></div></dialog>
@@ -232,7 +269,7 @@ function defaultCrew(){
  const F=['Chikondi','Thoko','Kondwani','Madalitso','Tiwonge','Chisomo','Mphatso','Limbani','Yamikani','Dalitso','Tamanda','Pemphero','Kumbukani','Chimwemwe','Takondwa','Wezi','Esther','Grace','Mercy','Patience','Lusungu','Temwa','Chifundo','Fatsani','Zione','Tadala','Chawezi','Mayeso','Khumbo','Tawonga','Upile','Atupele','Innocent','Blessings','Joseph','Ruth'];
  const S=['Banda','Phiri','Mwale','Chirwa','Nyirenda','Kamanga','Gondwe','Mkandawire','Tembo','Mhango','Kumwenda','Msiska','Kachingwe','Mbewe','Jere','Nkhoma','Chisale','Mvula','Soko','Manda','Munthali','Kalua','Chimombo','Zgambo','Longwe','Kalilani'];
  let n=0;const out=[];
- const add=(rank,type,base,k)=>{for(let i=0;i<k;i++){out.push({id:'c'+n,name:F[n%F.length]+' '+S[(n*7+3)%S.length],rank,type,base,leave:[]});n++}};
+ const add=(rank,type,base,k)=>{for(let i=0;i<k;i++){const fn=F[n%F.length],sn=S[(n*7+3)%S.length];out.push({id:'c'+n,name:fn+' '+sn,email:(fn+'.'+sn).toLowerCase()+'@example.com',rank,type,base,leave:[]});n++}};
  add('CPT','Q400','LLW',5);add('CPT','B737','LLW',4);add('CPT','Q400','BLZ',3);
  add('FO','Q400','LLW',5);add('FO','B737','LLW',4);add('FO','Q400','BLZ',3);
  add('CC','ALL','LLW',20);add('CC','ALL','BLZ',4);
@@ -462,20 +499,21 @@ function renderFleet(){
   <td class="acts"><button class="btn danger small" data-delfleet="${esc(f.code)}">Remove</button></td></tr>`).join('')||'<tr><td colspan="5">No aircraft yet. Add one above.</td></tr>')+'</tbody>';
 }
 function crewFormFields(c){
- c=c||{name:'',rank:'CPT',type:state.fleet[0]?.code||'',base:bases()[0]||'LLW'};
+ c=c||{name:'',email:'',rank:'CPT',type:state.fleet[0]?.code||'',base:bases()[0]||'LLW'};
  const opts=[...state.fleet.map(f=>f.code),'ALL'].map(t=>`<option value="${esc(t)}" ${c.type===t?'selected':''}>${t==='ALL'?'All types (cabin crew)':esc(t)}</option>`).join('');
  return `<label>Name<input name="name" required value="${esc(c.name)}" placeholder="e.g. Tiwonge Banda"></label>
   <label>Position<select name="rank">${Object.entries(RANK).map(([k,v])=>`<option value="${k}" ${c.rank===k?'selected':''}>${v}</option>`).join('')}</select></label>
   <label>Aircraft rating<select name="type">${opts}</select></label>
-  <label>Base<input name="base" class="code" list="bases" required maxlength="4" value="${esc(c.base)}"></label>`;
+  <label>Base<input name="base" class="code" list="bases" required maxlength="4" value="${esc(c.base)}"></label>
+  <label>Email (optional)<input name="email" type="email" value="${esc(c.email||'')}" placeholder="name@yourairline.mw"></label>`;
 }
 function renderCrew(){
  $('#addcrew').innerHTML=crewFormFields()+'<button class="btn" type="submit">Add crew member</button>';
  const f=(v,t)=>`<button class="chip" data-crewrank="${v}" aria-pressed="${ui.crewRank===v}">${t}</button>`;
  $('#crewfilters').innerHTML=f('ALL','Everyone')+f('CPT','Captains')+f('FO','First officers')+f('CC','Cabin crew');
  const list=state.crew.filter(c=>ui.crewRank==='ALL'||c.rank===ui.crewRank);
- $('#crewlist').innerHTML='<thead><tr><th>Name</th><th>Position</th><th>Aircraft</th><th>Base</th><th>Trips</th><th>Block</th><th>Leave days</th><th></th></tr></thead><tbody>'+
- (list.map(c=>{const l=R.byCrew.get(c.id)||[];return `<tr><td>${esc(c.name)}</td><td>${RANK[c.rank]}</td><td>${esc(typeLabel(c.type))}</td><td>${esc(c.base)}</td><td>${l.length}</td><td>${hrs(l.reduce((t,a)=>t+a.block,0))}</td><td>${c.leave.length}</td><td class="acts"><button class="btn ghost small" data-editc="${c.id}">Edit</button> <button class="btn danger small" data-del="${c.id}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="8">No crew yet.</td></tr>')+'</tbody>';
+ $('#crewlist').innerHTML='<thead><tr><th>Name</th><th>Position</th><th>Aircraft</th><th>Base</th><th>Email</th><th>Trips</th><th>Block</th><th>Leave days</th><th></th></tr></thead><tbody>'+
+ (list.map(c=>{const l=R.byCrew.get(c.id)||[];return `<tr><td>${esc(c.name)}</td><td>${RANK[c.rank]}</td><td>${esc(typeLabel(c.type))}</td><td>${esc(c.base)}</td><td>${c.email?esc(c.email):'<span class="noemail">None</span>'}</td><td>${l.length}</td><td>${hrs(l.reduce((t,a)=>t+a.block,0))}</td><td>${c.leave.length}</td><td class="acts"><button class="btn ghost small" data-editc="${c.id}">Edit</button> <button class="btn danger small" data-del="${c.id}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="8">No crew yet.</td></tr>')+'</tbody>';
 }
 function renderRules(){
  const r=state.rules,f=(k,t,hint,min,max)=>`<label>${t}<input type="number" data-rule="${k}" value="${r[k]}" min="${min}" max="${max}" step="1"><small>${hint}</small></label>`;
@@ -497,7 +535,7 @@ function renderDatalists(){
 }
 function render(){
  $('#period').textContent='Two weeks, '+longDay(0)+' to '+longDay(DAYS-1)+' 2026. The planner assigns every seat within your duty limits, evens out hours, and explains each choice.';
- renderDatalists();renderSummary();renderFilters();renderGrid();renderPatterns();renderFleet();renderCrew();renderRules();
+ renderDatalists();renderSummary();renderFilters();renderGrid();renderPatterns();renderFleet();renderCrew();renderRules();renderShare();
 }
 
 /* ---------- Dialogs ---------- */
@@ -595,11 +633,12 @@ function openCrewEditor(c){
 }
 function readCrewForm(form){
  const fd=new FormData(form),name=String(fd.get('name')).trim(),rank=fd.get('rank'),type=fd.get('type'),base=String(fd.get('base')).trim().toUpperCase();
- const err=[];
+ const email=String(fd.get('email')||'').trim(),err=[];
+ if(email&&!/^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email))err.push('Check the email address.');
  if(!name)err.push('Enter a name.');
  if(!/^[A-Z]{3,4}$/.test(base))err.push('Enter a 3 or 4 letter base code.');
  if(rank!=='CC'&&type==='ALL')err.push('Pilots need one aircraft rating.');
- return {name,rank,type,base,err};
+ return {name,email,rank,type,base,err};
 }
 let pending=null;
 function askConfirm(title,msg,label,fn){
@@ -612,15 +651,183 @@ const commit=msg=>{save();rebuild();if(msg)toast(msg)};
 const kI=v=>v.split('|').map(Number);
 const legDur=l=>validTime(l.dep)&&validTime(l.arr)?((toMin(l.arr)-toMin(l.dep))+1440)%1440:null;
 
+/* ---------- Print, files and email ---------- */
+const PERIOD=dayDate(0).getDate()+' to '+longDay(DAYS-1).replace(/^\w+ /,'')+' 2026';
+const shortDate=d=>dayDate(d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const legLines=x=>x.legs.map(l=>l.from+' '+l.dep+' → '+l.to+' '+l.arr);
+function crewDays(c){
+ const out=Array.from({length:DAYS},(_,d)=>({t:c.leave.includes(d)?'leave':'off'}));
+ for(const inst of (R.byCrew.get(c.id)||[]))inst.days.forEach((d,k)=>{if(d<DAYS){const x=inst.d.days[k],b=inst.day*1440;out[d]={t:'duty',inst,k,x,rep:b+x.rep,rel:b+x.rel,ns:k<inst.days.length-1?x.end:null}}});
+ return out;
+}
+function stats(c){const days=crewDays(c),l=R.byCrew.get(c.id)||[];return {duties:days.filter(x=>x.t==='duty').length,leave:days.filter(x=>x.t==='leave').length,off:days.filter(x=>x.t==='off').length,block:l.reduce((t,a)=>t+a.block,0)}}
+const PRINT_CSS=`.pr{font:11px/1.35 -apple-system,system-ui,"Segoe UI",Roboto,Arial,sans-serif;color:#000;background:#fff}
+.pr h1{font-size:18px;margin:0 0 2px}.pr .sub{margin:0 0 10px;color:#333}
+.pr table{border-collapse:collapse;width:100%}.pr th,.pr td{border:1px solid #999;padding:3px 4px;text-align:left;vertical-align:top}
+.pr th{background:#eee}.pr thead{display:table-header-group}.pr tr{page-break-inside:avoid;break-inside:avoid}
+.pr .lv{background:#eee;font-weight:600}.pr .ns{font-style:italic}.pr .tot{margin:8px 0 0}
+.pr .page{page-break-after:always;break-after:page}.pr .page:last-child{page-break-after:auto;break-after:auto}`;
+function printBody(kind,list){
+ const stamp=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+ if(kind==='full'){
+  let h=`<h1>Crew roster</h1><p class="sub">${esc(PERIOD)}. Printed ${stamp}. Times are local.</p><table><thead><tr><th>Crew</th>`;
+  for(let d=0;d<DAYS;d++)h+=`<th>${dayLabel(d)}</th>`;
+  h+='<th>Block</th></tr></thead><tbody>';
+  for(const c of list){
+   h+=`<tr><td><b>${esc(c.name)}</b><br>${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</td>`;
+   crewDays(c).forEach(x=>{h+=x.t==='duty'?`<td><b>${esc(x.inst.code)}</b><br>${hhmm(x.rep)}–${hhmm(x.rel)}${x.ns?`<br><span class="ns">NS ${esc(x.ns)}</span>`:''}</td>`:x.t==='leave'?'<td class="lv">Leave</td>':'<td></td>'});
+   h+=`<td>${hrs(stats(c).block)}</td></tr>`;
+  }
+  return h+'</tbody></table>';
+ }
+ return list.map(c=>{
+  const st=stats(c);
+  let h=`<section class="page"><h1>${esc(c.name)}</h1><p class="sub">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, based ${esc(c.base)}. Roster ${esc(PERIOD)}. Printed ${stamp}. Times are local.</p>
+   <table><thead><tr><th>Date</th><th>Duty</th><th>Report</th><th>Flights</th><th>Release</th></tr></thead><tbody>`;
+  crewDays(c).forEach((x,d)=>{
+   if(x.t==='duty')h+=`<tr><td>${shortDate(d)}</td><td><b>${esc(x.inst.code)}</b><br>${esc(x.inst.type)}</td><td>${hhmm(x.rep)}</td><td>${legLines(x.x).map(esc).join('<br>')}</td><td>${hhmm(x.rel)}${x.ns?`<br><span class="ns">Night stop ${esc(x.ns)}</span>`:''}</td></tr>`;
+   else h+=`<tr><td>${shortDate(d)}</td><td class="${x.t==='leave'?'lv':''}" colspan="4">${x.t==='leave'?'Leave':'Day off'}</td></tr>`;
+  });
+  return h+`</tbody></table><p class="tot">Duty days ${st.duties}. Block time ${dur(st.block*60)}. Days off ${st.off}. Leave ${st.leave}.</p></section>`;
+ }).join('');
+}
+const printDoc=(kind,list,title)=>`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>body{margin:16px}${PRINT_CSS}@page{${kind==='full'?'size:A4 landscape;':''}margin:10mm}</style></head><body class="pr">${printBody(kind,list)}</body></html>`;
+function doPrint(kind,list){
+ if(!list.length){toast('No crew to print.');return}
+ if(dlg.open)dlg.close();
+ $('#printarea').innerHTML=`<style>${PRINT_CSS}@page{${kind==='full'?'size:A4 landscape;':''}margin:10mm}</style><div class="pr">${printBody(kind,list)}</div>`;
+ setTimeout(()=>{try{window.print()}catch(e){toast('Printing is not available here. Use Download printable copy.')}},60);
+}
+function csvAll(){
+ const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+ const rows=[['Crew','Position','Aircraft','Base','Email',...Array.from({length:DAYS},(_,d)=>shortDate(d)),'Block hours']];
+ for(const c of state.crew)rows.push([c.name,RANK[c.rank],typeLabel(c.type),c.base,c.email||'',...crewDays(c).map(x=>x.t==='duty'?x.inst.code+' '+hhmm(x.rep)+'-'+hhmm(x.rel)+(x.ns?' night stop '+x.ns:''):x.t==='leave'?'Leave':''),(Math.round(stats(c).block*10)/10)]);
+ return '\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n');
+}
+function icsFor(c){
+ const pad=n=>String(n).padStart(2,'0'),e=v=>String(v).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+ const t=abs=>{const di=Math.floor(abs/1440),m=((abs%1440)+1440)%1440,dt=dayDate(di);return ''+dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+'T'+pad(Math.floor(m/60))+pad(m%60)+'00'};
+ const now=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+ const out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Crew Roster//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+e('Roster '+c.name)];
+ for(const inst of (R.byCrew.get(c.id)||[]))inst.d.days.forEach((x,k)=>{const b=inst.day*1440;
+  out.push('BEGIN:VEVENT','UID:'+inst.id+'-'+k+'-'+c.id+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(b+x.rep),'DTEND:'+t(b+x.rel),
+   'SUMMARY:'+e(inst.code+' '+legRoute(x.legs)),'LOCATION:'+e(x.legs[0].from),
+   'DESCRIPTION:'+e('Report '+hhmm(b+x.rep)+'\n'+legLines(x).join('\n')+'\nRelease '+hhmm(b+x.rel)+(k<inst.days.length-1?'\nNight stop '+x.end:'')),'END:VEVENT')});
+ out.push('END:VCALENDAR');return out.join('\r\n');
+}
+function personText(c){
+ const st=stats(c);let t=`Hello ${c.name.split(' ')[0]},\n\nHere is your roster for ${PERIOD}. Times are local.\n\n`;
+ crewDays(c).forEach((x,d)=>{
+  if(x.t==='duty')t+=`${shortDate(d)}: ${x.inst.code} (${x.inst.type}), report ${hhmm(x.rep)}\n${legLines(x.x).map(s=>'   '+s).join('\n')}\n   Release ${hhmm(x.rel)}${x.ns?', night stop '+x.ns:''}\n`;
+  else t+=`${shortDate(d)}: ${x.t==='leave'?'Leave':'Day off'}\n`;
+ });
+ return t+`\nDuty days ${st.duties}. Block time ${dur(st.block*60)}. Days off ${st.off}.\n\nCrew control`;
+}
+function fullText(){
+ let t=`Crew roster, ${PERIOD}. Times are local.\n\n`;
+ for(const c of state.crew){
+  t+=`${c.name} (${RANK[c.rank]}, ${typeLabel(c.type)}, ${c.base})\n`;
+  const lines=[];crewDays(c).forEach((x,d)=>{if(x.t==='duty')lines.push(`  ${shortDate(d)}  ${x.inst.code}  ${hhmm(x.rep)}-${hhmm(x.rel)}  ${x.inst.d.days[x.k].legs.length?legRoute(x.x.legs):''}${x.ns?'  night stop '+x.ns:''}`);else if(x.t==='leave')lines.push(`  ${shortDate(d)}  Leave`)});
+  t+=(lines.join('\n')||'  No duties')+'\n\n';
+ }
+ return t;
+}
+async function offerFile(name,data,type){
+ let dl=null;
+ if(window.claude&&typeof window.claude.use==='function'){try{dl=await window.claude.use('downloads')}catch(e){dl=null}}
+ if(dl){
+  if(/\.ics$/.test(name)){toast('Calendar files can be saved from the installed app. Here, use Email or Share instead.');return}
+  try{await dl.save({filename:name,data});toast('Saved '+name)}catch(e){if(!e||e.code!=='declined')toast('The file could not be saved here.')}
+  return;
+ }
+ const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('Downloading '+name);
+}
+let compose=null;
+function openCompose(o){
+ compose=o;
+ $('#dlgbody').innerHTML=`<button class="btn ghost small close" type="button" data-close>Close</button><h3>${esc(o.title)}</h3>
+  <label>To<input id="mto" type="email" multiple value="${esc(o.to||'')}" placeholder="name@yourairline.mw"></label>
+  ${o.bcc!==undefined?`<label>Bcc<input id="mbcc" type="email" multiple value="${esc(o.bcc)}"></label>`:''}
+  <label>Subject<input id="msub" value="${esc(o.subject)}"></label>
+  <label>Message<textarea id="mbody">${esc(o.body)}</textarea></label>
+  <p class="note">Write email opens your email app with this message filled in, ready to send. ${navigator.share?'Share also attaches '+esc(o.files.map(f=>f.name).join(' and '))+'.':''}</p>
+  <ul class="errs" id="merr"></ul>
+  <div class="actions"><button class="btn" id="msend">Write email</button>${navigator.share?'<button class="btn ghost" id="mshare">Share with attachment</button>':''}<button class="btn ghost" id="mcopy">Copy text</button></div>`;
+ dlg.showModal();
+}
+const addrOK=v=>!v||v.split(',').map(x=>x.trim()).filter(Boolean).every(x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+function openMail(url){
+ if(window.top===window){location.href=url;return}
+ const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+}
+function sendCompose(){
+ const to=$('#mto').value.trim(),bcc=$('#mbcc')?$('#mbcc').value.trim():'',err=[];
+ if(!to&&!bcc)err.push('Add at least one email address.');
+ if(!addrOK(to)||!addrOK(bcc))err.push('Check the email addresses. Separate several with commas.');
+ if(err.length){$('#merr').innerHTML=err.map(x=>`<li>${esc(x)}</li>`).join('');return}
+ const enc=v=>v.split(',').map(x=>encodeURIComponent(x.trim())).filter(Boolean).join(',');
+ const q=['subject='+encodeURIComponent($('#msub').value),'body='+encodeURIComponent($('#mbody').value.replace(/\r?\n/g,'\r\n'))];
+ if(bcc)q.unshift('bcc='+enc(bcc));
+ openMail('mailto:'+enc(to)+'?'+q.join('&'));
+ if(compose&&compose.person){compose.person.sent=true;renderShare()}
+ toast('Opening your email app. If nothing opens, use Copy text and paste it into an email.');
+}
+async function shareCompose(){
+ const title=$('#msub').value,text=$('#mbody').value;
+ let files=compose.files.map(f=>new File([f.data],f.name,{type:f.type}));
+ try{
+  if(files.length&&navigator.canShare&&navigator.canShare({files}))await navigator.share({title,text,files});
+  else await navigator.share({title,text});
+  if(compose&&compose.person){compose.person.sent=true;renderShare()}
+ }catch(e){if(e&&e.name!=='AbortError')toast('Sharing is not available here. Use Write email or Copy text.')}
+}
+function copyCompose(){
+ const ta=$('#mbody');
+ const done=()=>toast('Message copied. Paste it into any email.');
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();toast('Text selected. Tap Copy.')});
+ else{ta.select();try{document.execCommand('copy');done()}catch(e){toast('Text selected. Tap Copy.')}}
+}
+function composePerson(c){
+ openCompose({title:'Email roster to '+c.name,to:c.email||'',subject:'Your roster, '+PERIOD,body:personText(c),person:c,
+  files:[{name:slug(c.name)+'-roster.html',data:printDoc('each',[c],'Roster '+c.name),type:'text/html'},{name:slug(c.name)+'-roster.ics',data:icsFor(c),type:'text/calendar'}]});
+}
+const fullFiles=()=>[{name:'crew-roster.html',data:printDoc('full',state.crew,'Crew roster'),type:'text/html'},{name:'crew-roster.csv',data:csvAll(),type:'text/csv'}];
+const shareCrew=()=>state.crew.filter(c=>ui.shareRank==='ALL'||c.rank===ui.shareRank);
+function renderShare(){
+ if(!ui.shareRank)ui.shareRank='ALL';
+ const withMail=state.crew.filter(c=>c.email).length;
+ $('#sharecount').textContent=`${withMail} of ${state.crew.length} crew have an email address. Add missing ones with Edit on the Crew tab, or type an address when you write the email.`;
+ const f=(v,t)=>`<button class="chip" data-sharerank="${v}" aria-pressed="${ui.shareRank===v}">${t}</button>`;
+ $('#sharefilters').innerHTML=f('ALL','Everyone')+f('CPT','Captains')+f('FO','First officers')+f('CC','Cabin crew');
+ $('#printeach').textContent='Print a page for each person ('+shareCrew().length+')';
+ $('#sharelist').innerHTML=shareCrew().map(c=>{const st=stats(c);return `<div class="person"><div><span class="nm">${esc(c.name)}${c.sent?' <span class="meta" style="display:inline;color:var(--ok)">Sent</span>':''}</span><span class="meta">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, ${esc(c.base)}. ${st.duties} duty days, ${dur(st.block*60)} block.</span>${c.email?`<span class="meta">${esc(c.email)}</span>`:'<span class="noemail">No email address</span>'}</div>
+  <div class="actions"><button class="btn small" data-mailc="${c.id}">Email</button><button class="btn ghost small" data-printc="${c.id}">Print</button><button class="btn ghost small" data-icsc="${c.id}">Calendar file</button></div></div>`}).join('')||'<p class="note">No crew yet.</p>';
+}
+
 /* ---------- Events ---------- */
 document.addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
- if(ds.tab){ui.tab=ds.tab;document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));['roster','flights','fleet','crew','rules'].forEach(k=>$('#tab-'+k).hidden=k!==ui.tab);return}
+ if(ds.tab){ui.tab=ds.tab;document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));['roster','share','flights','fleet','crew','rules'].forEach(k=>$('#tab-'+k).hidden=k!==ui.tab);return}
  if(b.id==='confirmyes'){const fn=pending;pending=null;dlg.close();if(fn)fn();return}
  if(ds.close!==undefined){dlg.close();return}
  if(ds.seat){openSeat(R.seats[+ds.seat]);return}
  if(ds.f){ui[ds.f]=ds.v;renderFilters();renderGrid();return}
  if(ds.crewrank){ui.crewRank=ds.crewrank;renderCrew();return}
+ if(ds.sharerank){ui.shareRank=ds.sharerank;renderShare();return}
+ if(ds.mailc){composePerson(state.crew.find(c=>c.id===ds.mailc));return}
+ if(ds.printc){doPrint('each',[state.crew.find(c=>c.id===ds.printc)]);return}
+ if(ds.icsc){const c=state.crew.find(x=>x.id===ds.icsc);offerFile(slug(c.name)+'-roster.ics',icsFor(c),'text/calendar');return}
+ if(b.id==='printfull'){doPrint('full',state.crew);return}
+ if(b.id==='printeach'){doPrint('each',shareCrew());return}
+ if(b.id==='dlhtml'){offerFile('crew-roster.html',printDoc('full',state.crew,'Crew roster'),'text/html');return}
+ if(b.id==='dlcsv'){offerFile('crew-roster.csv',csvAll(),'text/csv');return}
+ if(b.id==='emailfull'){openCompose({title:'Email the full roster',to:$('#fullto').value.trim(),subject:'Crew roster, '+PERIOD,body:fullText(),files:fullFiles()});return}
+ if(b.id==='emailall'){const all=state.crew.filter(c=>c.email).map(c=>c.email);if(!all.length){toast('No crew have email addresses yet.');return}
+  openCompose({title:'Email all crew',to:'',bcc:all.join(', '),subject:'Crew roster, '+PERIOD,body:fullText(),files:fullFiles()});return}
+ if(b.id==='msend'){sendCompose();return}
+ if(b.id==='mshare'){shareCompose();return}
+ if(b.id==='mcopy'){copyCompose();return}
  if(ds.leave){
   const[id,d]=ds.leave.split('|'),c=state.crew.find(x=>x.id===id),day=+d,k=c.leave.indexOf(day);
   if(k>=0)c.leave.splice(k,1);else c.leave.push(day);
@@ -662,7 +869,7 @@ document.addEventListener('click',e=>{
  if(b.id==='reset'){askConfirm('Reset to sample data?','This replaces all your aircraft, flights, crew and rules.','Reset everything',()=>{state=freshState();commit('Sample data restored.')})}
 });
 dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
-dlg.addEventListener('close',()=>{draft=null;pending=null});
+dlg.addEventListener('close',()=>{draft=null;pending=null;compose=null});
 document.addEventListener('input',e=>{
  const t=e.target;if(!draft)return;
  if(t.dataset.leg!==undefined){let v=t.value;const k=+t.dataset.dd,i=+t.dataset.leg,key=t.dataset.k,legs=draft.duties[k];
@@ -696,8 +903,8 @@ document.addEventListener('submit',e=>{
  if(f.id==='addcrew'||f.id==='cform'){
   const r=readCrewForm(f);
   if(r.err.length){if(f.id==='cform')$('#cerr').innerHTML=r.err.map(x=>`<li>${esc(x)}</li>`).join('');else toast(r.err[0]);return}
-  if(f.id==='addcrew'){state.crew.push({id:uid(),name:r.name,rank:r.rank,type:r.type,base:r.base,leave:[]});commit(r.name+' added. Roster rebuilt.')}
-  else{const c=state.crew.find(x=>x.id===f.dataset.id);Object.assign(c,{name:r.name,rank:r.rank,type:r.type,base:r.base});dlg.close();commit(r.name+' updated. Roster rebuilt.')}
+  if(f.id==='addcrew'){state.crew.push({id:uid(),name:r.name,email:r.email,rank:r.rank,type:r.type,base:r.base,leave:[]});commit(r.name+' added. Roster rebuilt.')}
+  else{const c=state.crew.find(x=>x.id===f.dataset.id);Object.assign(c,{name:r.name,email:r.email,rank:r.rank,type:r.type,base:r.base});dlg.close();commit(r.name+' updated. Roster rebuilt.')}
   return;
  }
  if(f.id==='addfleet'){
