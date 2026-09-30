@@ -718,12 +718,7 @@ function icsFor(c){
  out.push('END:VCALENDAR');return out.join('\r\n');
 }
 function personText(c){
- const st=stats(c);let t=`Hello ${c.name.split(' ')[0]},\n\nYour roster for ${PERIOD} is attached as a PDF. The calendar file adds your duties to your phone's calendar. A summary is below. Times are local.\n\n`;
- crewDays(c).forEach((x,d)=>{
-  if(x.t==='duty')t+=`${shortDate(d)}: ${x.inst.code} (${x.inst.type}), report ${hhmm(x.rep)}\n${legLines(x.x).map(s=>'   '+s).join('\n')}\n   Release ${hhmm(x.rel)}${x.ns?', night stop '+x.ns:''}\n`;
-  else t+=`${shortDate(d)}: ${x.t==='leave'?'Leave':'Day off'}\n`;
- });
- return t+`\nDuty days ${st.duties}. Block time ${dur(st.block*60)}. Days off ${st.off}.\n\nCrew control`;
+ return `Hello ${c.name.split(' ')[0]},\n\nPlease find your roster for ${PERIOD} attached as a PDF.\n\nCrew control`;
 }
 function fullText(){
  let t=`Crew roster, ${PERIOD}. Times are local.\n\n`;
@@ -787,10 +782,10 @@ function openCompose(o){
   ${field('mto','To',o.to||'',true)}
   ${o.bcc!==undefined?field('mbcc','Bcc',o.bcc,true):''}
   <label>Subject<input id="msub" value="${esc(o.subject)}"></label>
-  <label>Message<textarea id="mbody">${esc(o.body)}</textarea></label>
-  <p class="note">${share?'Email with attachment opens the share sheet. Choose Mail and the files are attached for you. Then add the address: tap Copy first, then paste it into the To line.':'This device can\'t attach files to an email automatically. Email with attachment saves the file first and then opens your email app. Attach the saved file before you send.'}</p>
+  <label>${o.pdfOnly?'Covering note':'Message'}<textarea id="mbody" style="${o.pdfOnly?'min-height:90px':''}">${esc(o.body)}</textarea></label>
+  <p class="note">${share?(o.pdfOnly?'Send PDF by email':'Email with attachment')+' opens the share sheet. Choose Mail and the files are attached for you. Then add the address: tap Copy first, then paste it into the To line.':'This device can\'t attach files to an email automatically. '+(o.pdfOnly?'Send PDF by email':'Email with attachment')+' saves the file first and then opens your email app. Attach the saved file before you send.'}</p>
   <ul class="errs" id="merr"></ul>
-  <div class="actions"><button class="btn" id="mattach">Email with attachment</button><button class="btn ghost" id="msend">Email text only</button><button class="btn ghost" id="mdl">Save ${esc(o.files[0].name.split('.').pop().toUpperCase())}</button><button class="btn ghost" id="mcopy">Copy text</button></div>`;
+  <div class="actions"><button class="btn" id="mattach">${o.pdfOnly?'Send PDF by email':'Email with attachment'}</button>${o.pdfOnly?'':'<button class="btn ghost" id="msend">Email text only</button>'}<button class="btn ghost" id="mdl">Save ${esc(o.files[0].name.split('.').pop().toUpperCase())}</button>${o.pdfOnly?'':'<button class="btn ghost" id="mcopy">Copy text</button>'}</div>`;
  dlg.showModal();
 }
 const addrOK=v=>!v||v.split(',').map(x=>x.trim()).filter(Boolean).every(x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
@@ -843,8 +838,8 @@ function copyCompose(){
  else{ta.select();try{document.execCommand('copy');done()}catch(e){toast('Text selected. Tap Copy.')}}
 }
 function composePerson(c){
- openCompose({title:'Email roster to '+c.name,to:c.email||'',subject:'Your roster, '+PERIOD,body:personText(c),person:c,
-  files:[{name:slug(c.name)+'-roster.pdf',data:pdfFor([c]),type:'application/pdf'},{name:slug(c.name)+'-roster.ics',data:icsFor(c),type:'text/calendar'}]});
+ openCompose({title:'Send roster PDF to '+c.name,to:c.email||'',subject:'Your roster, '+PERIOD,body:personText(c),person:c,
+  pdfOnly:true,files:[{name:slug(c.name)+'-roster.pdf',data:pdfFor([c]),type:'application/pdf'}]});
 }
 async function sendAllPdf(){
  const list=shareCrew();if(!list.length){toast('No crew to send.');return}
