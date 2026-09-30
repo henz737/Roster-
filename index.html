@@ -181,6 +181,7 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
       <h2>Roster for each person</h2>
       <p class="note" id="sharecount"></p>
       <div class="filters" id="sharefilters"></div>
+      <div class="actions" style="margin-bottom:6px"><button class="btn ghost small" id="sendallpdf">Send all rosters as one PDF</button></div>
       <div id="sharelist"></div>
     </div>
   </section>
@@ -717,7 +718,7 @@ function icsFor(c){
  out.push('END:VCALENDAR');return out.join('\r\n');
 }
 function personText(c){
- const st=stats(c);let t=`Hello ${c.name.split(' ')[0]},\n\nHere is your roster for ${PERIOD}. Times are local.\n\n`;
+ const st=stats(c);let t=`Hello ${c.name.split(' ')[0]},\n\nYour roster for ${PERIOD} is attached as a PDF. The calendar file adds your duties to your phone's calendar. A summary is below. Times are local.\n\n`;
  crewDays(c).forEach((x,d)=>{
   if(x.t==='duty')t+=`${shortDate(d)}: ${x.inst.code} (${x.inst.type}), report ${hhmm(x.rep)}\n${legLines(x.x).map(s=>'   '+s).join('\n')}\n   Release ${hhmm(x.rel)}${x.ns?', night stop '+x.ns:''}\n`;
   else t+=`${shortDate(d)}: ${x.t==='leave'?'Leave':'Day off'}\n`;
@@ -743,17 +744,53 @@ async function offerFile(name,data,type){
  }
  const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('Downloading '+name);
 }
+/* Minimal PDF writer: no libraries, works offline */
+const pdfStr=v=>String(v).replace(/→/g,'to').replace(/–/g,'\x96').replace(/—/g,'\x97').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[^\x00-\xff]/g,'?').replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+function pdfBytes(pages){
+ const objs=[null,null,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'],kids=[];
+ for(const c of pages){objs.push(`<< /Length ${c.length} >>\nstream\n${c}\nendstream`);const cs=objs.length;objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${cs} 0 R >>`);kids.push(objs.length)}
+ objs[0]='<< /Type /Catalog /Pages 2 0 R >>';objs[1]=`<< /Type /Pages /Kids [${kids.map(k=>k+' 0 R').join(' ')}] /Count ${kids.length} >>`;
+ let out='%PDF-1.4\n%\xe2\xe3\xcf\xd3\n';const offs=[];
+ objs.forEach((o,i)=>{offs.push(out.length);out+=`${i+1} 0 obj\n${o}\nendobj\n`});
+ const xr=out.length;
+ out+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
+ const b=new Uint8Array(out.length);for(let i=0;i<out.length;i++)b[i]=out.charCodeAt(i)&255;return b;
+}
+function pdfPersonPages(c){
+ const pages=[],M=40,TW=515,cols=[M,M+80,M+152,M+204,M+404];let cs='',y=0;
+ const T=(x,yy,v,size,bold,gray)=>{cs+=`BT ${gray||0} g /${bold?'F2':'F1'} ${size} Tf ${x} ${yy} Td (${pdfStr(v)}) Tj ET\n`};
+ const stamp=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+ const header=cont=>{cs='';T(M,796,c.name+(cont?' (continued)':''),18,true);T(M,778,`${RANK[c.rank]}, ${typeLabel(c.type)}, based ${c.base}. Roster ${PERIOD}. Times are local.`,10,false,0.3);
+  y=760;cs+=`0.9 g ${M} ${y-18} ${TW} 18 re f\n`;['Date','Duty','Report','Flights','Release'].forEach((h,i)=>T(cols[i]+4,y-13,h,9.5,true));y-=18};
+ const footer=()=>T(M,28,'Crew roster, printed '+stamp,8,false,0.45);
+ header(false);
+ crewDays(c).forEach((x,d)=>{
+  const cells=x.t==='duty'?[[shortDate(d)],[x.inst.code,x.inst.type],[hhmm(x.rep)],legLines(x.x),[hhmm(x.rel)].concat(x.ns?['Night stop '+x.ns]:[])]:[[shortDate(d)],[x.t==='leave'?'Leave':'Day off'],[],[],[]];
+  const h=Math.max(...cells.map(a=>a.length))*12+8;
+  if(y-h<60){footer();pages.push(cs);header(true)}
+  if(x.t==='leave')cs+=`0.95 g ${M} ${y-h} ${TW} ${h-0.8} re f\n`;
+  cells.forEach((lines,i)=>lines.forEach((v,j)=>T(cols[i]+4,y-13-j*12,v,9.5,x.t==='duty'&&i===1&&j===0,x.t==='off'?0.45:0)));
+  cs+=`0.75 G 0.5 w ${M} ${y-h} m ${M+TW} ${y-h} l S\n`;y-=h;
+ });
+ if(y<90){footer();pages.push(cs);header(true)}
+ const st=stats(c);T(M,y-22,`Duty days ${st.duties}. Block time ${dur(st.block*60)}. Days off ${st.off}. Leave ${st.leave}.`,10,true);
+ footer();pages.push(cs);return pages;
+}
+const pdfFor=list=>pdfBytes(list.flatMap(pdfPersonPages));
+const canShareFiles=()=>{try{return !!(navigator.share&&navigator.canShare&&navigator.canShare({files:[new File(['x'],'x.pdf',{type:'application/pdf'})]}))}catch(e){return false}};
 let compose=null;
 function openCompose(o){
- compose=o;
+ compose=o;const share=canShareFiles(),names=o.files.map(f=>f.name).join(' and ');
+ const field=(id,label,val,copy)=>`<div class="form" style="flex-wrap:nowrap;margin-top:10px"><label style="flex:1;margin:0">${label}<input id="${id}" type="email" multiple value="${esc(val)}" placeholder="name@yourairline.mw"></label>${copy?`<button type="button" class="btn ghost small" data-copyfield="${id}">Copy</button>`:''}</div>`;
  $('#dlgbody').innerHTML=`<button class="btn ghost small close" type="button" data-close>Close</button><h3>${esc(o.title)}</h3>
-  <label>To<input id="mto" type="email" multiple value="${esc(o.to||'')}" placeholder="name@yourairline.mw"></label>
-  ${o.bcc!==undefined?`<label>Bcc<input id="mbcc" type="email" multiple value="${esc(o.bcc)}"></label>`:''}
+  <p class="note">Attached: <b>${esc(names)}</b></p>
+  ${field('mto','To',o.to||'',true)}
+  ${o.bcc!==undefined?field('mbcc','Bcc',o.bcc,true):''}
   <label>Subject<input id="msub" value="${esc(o.subject)}"></label>
   <label>Message<textarea id="mbody">${esc(o.body)}</textarea></label>
-  <p class="note">Write email opens your email app with this message filled in, ready to send. ${navigator.share?'Share also attaches '+esc(o.files.map(f=>f.name).join(' and '))+'.':''}</p>
+  <p class="note">${share?'Email with attachment opens the share sheet. Choose Mail and the files are attached for you. Then add the address: tap Copy first, then paste it into the To line.':'This device can\'t attach files to an email automatically. Email with attachment saves the file first and then opens your email app. Attach the saved file before you send.'}</p>
   <ul class="errs" id="merr"></ul>
-  <div class="actions"><button class="btn" id="msend">Write email</button>${navigator.share?'<button class="btn ghost" id="mshare">Share with attachment</button>':''}<button class="btn ghost" id="mcopy">Copy text</button></div>`;
+  <div class="actions"><button class="btn" id="mattach">Email with attachment</button><button class="btn ghost" id="msend">Email text only</button><button class="btn ghost" id="mdl">Save ${esc(o.files[0].name.split('.').pop().toUpperCase())}</button><button class="btn ghost" id="mcopy">Copy text</button></div>`;
  dlg.showModal();
 }
 const addrOK=v=>!v||v.split(',').map(x=>x.trim()).filter(Boolean).every(x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
@@ -761,21 +798,38 @@ function openMail(url){
  if(window.top===window){location.href=url;return}
  const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
 }
-function sendCompose(){
+function readAddr(){
  const to=$('#mto').value.trim(),bcc=$('#mbcc')?$('#mbcc').value.trim():'',err=[];
  if(!to&&!bcc)err.push('Add at least one email address.');
  if(!addrOK(to)||!addrOK(bcc))err.push('Check the email addresses. Separate several with commas.');
- if(err.length){$('#merr').innerHTML=err.map(x=>`<li>${esc(x)}</li>`).join('');return}
+ $('#merr').innerHTML=err.map(x=>`<li>${esc(x)}</li>`).join('');
+ return err.length?null:{to,bcc};
+}
+function sendCompose(attachNote){
+ const a=readAddr();if(!a)return false;
  const enc=v=>v.split(',').map(x=>encodeURIComponent(x.trim())).filter(Boolean).join(',');
- const q=['subject='+encodeURIComponent($('#msub').value),'body='+encodeURIComponent($('#mbody').value.replace(/\r?\n/g,'\r\n'))];
- if(bcc)q.unshift('bcc='+enc(bcc));
- openMail('mailto:'+enc(to)+'?'+q.join('&'));
+ const body=$('#mbody').value+(attachNote?'\n\n(Attached: '+attachNote+')':'');
+ const q=['subject='+encodeURIComponent($('#msub').value),'body='+encodeURIComponent(body.replace(/\r?\n/g,'\r\n'))];
+ if(a.bcc)q.unshift('bcc='+enc(a.bcc));
+ openMail('mailto:'+enc(a.to)+'?'+q.join('&'));
  if(compose&&compose.person){compose.person.sent=true;renderShare()}
- toast('Opening your email app. If nothing opens, use Copy text and paste it into an email.');
+ toast(attachNote?'Opening your email app. Attach '+attachNote+' from your downloads before sending.':'Opening your email app. If nothing opens, use Copy text and paste it into an email.');
+ return true;
+}
+async function emailWithAttachment(){
+ if(canShareFiles()){await shareCompose();return}
+ if(!readAddr())return;
+ const f=compose.files[0],o=compose;await offerFile(f.name,f.data,f.type);compose=o;
+ sendCompose(f.name);
+}
+function copyField(id){
+ const el=$('#'+id),v=el.value.trim();if(!v){toast('Nothing to copy yet.');return}
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(()=>toast('Address copied. Paste it into the To line.')).catch(()=>{el.select();toast('Address selected. Tap Copy.')});
+ else{el.select();toast('Address selected. Tap Copy.')}
 }
 async function shareCompose(){
  const title=$('#msub').value,text=$('#mbody').value;
- let files=compose.files.map(f=>new File([f.data],f.name,{type:f.type}));
+ const files=compose.files.map(f=>new File([f.data],f.name,{type:f.type}));
  try{
   if(files.length&&navigator.canShare&&navigator.canShare({files}))await navigator.share({title,text,files});
   else await navigator.share({title,text});
@@ -790,7 +844,13 @@ function copyCompose(){
 }
 function composePerson(c){
  openCompose({title:'Email roster to '+c.name,to:c.email||'',subject:'Your roster, '+PERIOD,body:personText(c),person:c,
-  files:[{name:slug(c.name)+'-roster.html',data:printDoc('each',[c],'Roster '+c.name),type:'text/html'},{name:slug(c.name)+'-roster.ics',data:icsFor(c),type:'text/calendar'}]});
+  files:[{name:slug(c.name)+'-roster.pdf',data:pdfFor([c]),type:'application/pdf'},{name:slug(c.name)+'-roster.ics',data:icsFor(c),type:'text/calendar'}]});
+}
+async function sendAllPdf(){
+ const list=shareCrew();if(!list.length){toast('No crew to send.');return}
+ const name='individual-rosters'+(ui.shareRank==='ALL'?'':'-'+ui.shareRank.toLowerCase())+'.pdf',data=pdfFor(list);
+ if(canShareFiles()){try{await navigator.share({title:'Individual rosters, '+PERIOD,text:'Individual rosters for '+PERIOD+' are attached, one page per person.',files:[new File([data],name,{type:'application/pdf'})]})}catch(e){if(e&&e.name!=='AbortError')offerFile(name,data,'application/pdf')}}
+ else offerFile(name,data,'application/pdf');
 }
 const fullFiles=()=>[{name:'crew-roster.html',data:printDoc('full',state.crew,'Crew roster'),type:'text/html'},{name:'crew-roster.csv',data:csvAll(),type:'text/csv'}];
 const shareCrew=()=>state.crew.filter(c=>ui.shareRank==='ALL'||c.rank===ui.shareRank);
@@ -800,9 +860,9 @@ function renderShare(){
  $('#sharecount').textContent=`${withMail} of ${state.crew.length} crew have an email address. Add missing ones with Edit on the Crew tab, or type an address when you write the email.`;
  const f=(v,t)=>`<button class="chip" data-sharerank="${v}" aria-pressed="${ui.shareRank===v}">${t}</button>`;
  $('#sharefilters').innerHTML=f('ALL','Everyone')+f('CPT','Captains')+f('FO','First officers')+f('CC','Cabin crew');
- $('#printeach').textContent='Print a page for each person ('+shareCrew().length+')';
+ $('#printeach').textContent='Print a page for each person ('+shareCrew().length+')';$('#sendallpdf').textContent='Send all '+shareCrew().length+' rosters as one PDF';
  $('#sharelist').innerHTML=shareCrew().map(c=>{const st=stats(c);return `<div class="person"><div><span class="nm">${esc(c.name)}${c.sent?' <span class="meta" style="display:inline;color:var(--ok)">Sent</span>':''}</span><span class="meta">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, ${esc(c.base)}. ${st.duties} duty days, ${dur(st.block*60)} block.</span>${c.email?`<span class="meta">${esc(c.email)}</span>`:'<span class="noemail">No email address</span>'}</div>
-  <div class="actions"><button class="btn small" data-mailc="${c.id}">Email</button><button class="btn ghost small" data-printc="${c.id}">Print</button><button class="btn ghost small" data-icsc="${c.id}">Calendar file</button></div></div>`}).join('')||'<p class="note">No crew yet.</p>';
+  <div class="actions"><button class="btn small" data-mailc="${c.id}">Email PDF</button><button class="btn ghost small" data-pdfc="${c.id}">Save PDF</button><button class="btn ghost small" data-printc="${c.id}">Print</button><button class="btn ghost small" data-icsc="${c.id}">Calendar file</button></div></div>`}).join('')||'<p class="note">No crew yet.</p>';
 }
 
 /* ---------- Events ---------- */
@@ -826,7 +886,11 @@ document.addEventListener('click',e=>{
  if(b.id==='emailall'){const all=state.crew.filter(c=>c.email).map(c=>c.email);if(!all.length){toast('No crew have email addresses yet.');return}
   openCompose({title:'Email all crew',to:'',bcc:all.join(', '),subject:'Crew roster, '+PERIOD,body:fullText(),files:fullFiles()});return}
  if(b.id==='msend'){sendCompose();return}
- if(b.id==='mshare'){shareCompose();return}
+ if(b.id==='mattach'){emailWithAttachment();return}
+ if(b.id==='mdl'){const f=compose.files[0];offerFile(f.name,f.data,f.type);return}
+ if(ds.copyfield){copyField(ds.copyfield);return}
+ if(ds.pdfc){const c=state.crew.find(x=>x.id===ds.pdfc);offerFile(slug(c.name)+'-roster.pdf',pdfFor([c]),'application/pdf');return}
+ if(b.id==='sendallpdf'){sendAllPdf();return}
  if(b.id==='mcopy'){copyCompose();return}
  if(ds.leave){
   const[id,d]=ds.leave.split('|'),c=state.crew.find(x=>x.id===id),day=+d,k=c.leave.indexOf(day);
