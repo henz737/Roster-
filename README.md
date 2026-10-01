@@ -1,4 +1,4 @@
-# Crew Roster: iOS prototype
+# Malawi Airlines Roster Builder: iOS prototype
 
 This folder wraps the crew roster planner as a native iOS app using Capacitor.
 The whole app lives in `www/index.html`; Capacitor puts it inside an iPhone app shell.
@@ -21,7 +21,7 @@ Xcode opens the project.
 ## 2. Set it up in Xcode
 1. Click the **App** project, then the **Signing & Capabilities** tab.
 2. Choose your **Team** (sign in with your Apple ID if asked).
-3. Change the **Bundle Identifier** to something unique, e.g. `com.yourname.crewroster`
+3. Change the **Bundle Identifier** to something unique, e.g. `com.yourname.marosterbuilder`
    (and update `appId` in `capacitor.config.json` to match).
 4. Open **App > Assets > AppIcon** and drag in `resources/icon-1024.png`.
 

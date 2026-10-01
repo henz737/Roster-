@@ -1,6 +1,6 @@
 {
-  "appId": "com.yourairline.crewroster",
-  "appName": "Crew Roster",
+  "appId": "com.malawiairlines.rosterbuilder",
+  "appName": "MA Roster",
   "webDir": "www",
   "ios": {
     "contentInset": "never",
