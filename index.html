@@ -110,6 +110,23 @@ legend{font-size:14px;font-weight:600;margin-bottom:6px;padding:0}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
 .toast.show{opacity:1}
 #printarea{display:none}
+.cell.act{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:4px 6px;text-align:left;border:1px solid var(--line);line-height:1.2;color:var(--ink)}
+.cell.act b{font-size:13px}.cell.act span{font-size:12px;color:var(--muted)}
+.cell.sim{background:color-mix(in srgb,var(--t4) 16%,transparent);border-left:5px solid var(--t4)}
+.cell.sb{background:color-mix(in srgb,var(--t5) 14%,transparent);border-left:5px solid var(--t5)}
+.strip.flag{outline:2px solid var(--err);outline-offset:-2px}
+.strip .fl{display:block;font-size:11px;font-weight:700;color:var(--err)}
+.strip .lk{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.docbad{color:var(--err);font-weight:600}.docwarn{color:var(--warn);font-weight:600}
+.meta.docbad,.meta.docwarn{font-size:12px}
+.flaglist{display:flex;flex-direction:column;gap:6px;margin:0 0 16px}
+.flagrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-left:4px solid var(--err);background:var(--panel);padding:8px 10px;border-radius:4px}
+.flagrow.warn{border-left-color:var(--warn)}
+.pday{display:grid;grid-template-columns:92px 1fr;gap:8px;align-items:stretch;padding:5px 0;border-bottom:1px solid var(--line)}
+.pday .pd{font-weight:600;font-size:14px;align-self:center}
+.pday .strip,.pday .cell{min-height:44px}
+.optlist{display:flex;flex-direction:column;gap:6px}
+.optlist .btn{text-align:left;font-weight:500}
 @media print{body>*:not(#printarea){display:none!important}#printarea{display:block}:root{padding:0}body{background:#fff;color:#000}}
 textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);resize:vertical}
 .dlg label{margin-top:10px}
@@ -139,6 +156,7 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
   <button class="tab" role="tab" data-tab="fleet" aria-selected="false">Aircraft</button>
   <button class="tab" role="tab" data-tab="crew" aria-selected="false">Crew</button>
   <button class="tab" role="tab" data-tab="rules" aria-selected="false">Rules</button>
+  <button class="tab" role="tab" data-tab="data" aria-selected="false">Import and backup</button>
 </nav>
 <main>
   <section id="tab-roster">
@@ -149,13 +167,16 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
         <li>Create each duty under <b>Flights and routes</b>: pick the aircraft, add legs with departure and arrival times, and choose the days it operates.</li>
         <li>Add your crew under <b>Crew</b> with their position, aircraft rating and base.</li>
         <li>Check the limits under <b>Rules</b>. The roster rebuilds itself after every change.</li>
+        <li>Tap any day on the roster to add leave, simulator training, standby or a flight. Tap a flight to change its crew.</li>
       </ol>
     </div>
     <div class="summary" id="summary"></div>
+    <div id="flags"></div>
     <div id="opentime"></div>
     <div class="filters" id="filters"></div>
     <div class="legend" id="legend"></div>
-    <div class="gridwrap"><table class="grid" id="grid"></table></div>
+    <div class="gridwrap" id="gridwrap"><table class="grid" id="grid"></table></div>
+    <div id="personview" hidden></div>
   </section>
   <section id="tab-share" hidden>
     <div class="panel">
@@ -163,7 +184,7 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
       <p class="note">In the print screen you can also choose Save as PDF. If printing is blocked where you're viewing the app, download the printable copy and print that.</p>
       <div class="actions">
         <button class="btn" id="printfull">Print full roster</button>
-        <button class="btn ghost" id="printeach">Print a page for each person</button>
+        <button class="btn ghost" id="printeach">Print a page for every crew member</button>
         <button class="btn ghost" id="dlhtml">Download printable copy</button>
         <button class="btn ghost" id="dlcsv">Download spreadsheet (CSV)</button>
       </div>
@@ -181,7 +202,8 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
       <h2>Roster for each person</h2>
       <p class="note" id="sharecount"></p>
       <div class="filters" id="sharefilters"></div>
-      <div class="actions" style="margin-bottom:6px"><button class="btn ghost small" id="sendallpdf">Send all rosters as one PDF</button></div>
+      <div class="actions" style="margin-bottom:6px"><button class="btn ghost small" id="selall">Select all shown</button><button class="btn ghost small" id="selnone">Clear selection</button></div>
+      <div class="actions" style="margin-bottom:6px"><button class="btn small" id="sendallpdf">Send selected as one PDF</button><button class="btn ghost small" id="saveselpdf">Save selected as PDF</button><button class="btn ghost small" id="printsel">Print selected</button></div>
       <div id="sharelist"></div>
     </div>
   </section>
@@ -217,6 +239,28 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
       <h2>Crew list</h2>
       <div class="filters" id="crewfilters"></div>
       <div class="tablewrap"><table class="list" id="crewlist"></table></div>
+    </div>
+  </section>
+  <section id="tab-data" hidden>
+    <div class="panel">
+      <h2>Import from another system</h2>
+      <p class="note">Bring in crew, flights, or leave, training and standby from a spreadsheet or another rostering system. Save or export it as CSV (comma, semicolon or tab separated), then choose the file or paste the text below. Column names are matched flexibly.</p>
+      <div class="form">
+        <label>What are you importing?<select id="imptype"><option value="crew">Crew list</option><option value="flights">Flights and legs</option><option value="acts">Leave, training and standby</option></select></label>
+        <label>How to import<select id="impmode"><option value="merge">Add new and update existing</option><option value="replace">Replace everything of this kind</option></select></label>
+        <button class="btn ghost" id="imptpl" type="button">Download template</button>
+      </div>
+      <p class="note" id="impformat"></p>
+      <div class="form"><label style="flex:1 1 260px">Choose a file<input id="impfile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain"></label></div>
+      <label style="margin-top:10px">Or paste the data<textarea id="imptext" style="min-height:120px" placeholder="name,position,aircraft,base,email,licence_expiry,medical_expiry,recurrent_expiry"></textarea></label>
+      <div class="actions" style="margin-top:10px"><button class="btn" id="impcheck" type="button">Check data</button><button class="btn" id="impgo" type="button" hidden>Import now</button></div>
+      <div id="imppreview" class="psum" hidden></div>
+    </div>
+    <div class="panel">
+      <h2>Backup</h2>
+      <p class="note">Save everything (aircraft, flights, crew, leave, training, standby, manual changes and rules) to one file. Restore it on another phone or after a reset.</p>
+      <div class="actions"><button class="btn" id="backupsave" type="button">Save backup file</button></div>
+      <div class="form" style="margin-top:10px"><label style="flex:1 1 260px">Restore from a backup file<input id="backupfile" type="file" accept=".json,application/json"></label></div>
     </div>
   </section>
   <section id="tab-rules" hidden>
@@ -270,27 +314,57 @@ function defaultCrew(){
  const F=['Chikondi','Thoko','Kondwani','Madalitso','Tiwonge','Chisomo','Mphatso','Limbani','Yamikani','Dalitso','Tamanda','Pemphero','Kumbukani','Chimwemwe','Takondwa','Wezi','Esther','Grace','Mercy','Patience','Lusungu','Temwa','Chifundo','Fatsani','Zione','Tadala','Chawezi','Mayeso','Khumbo','Tawonga','Upile','Atupele','Innocent','Blessings','Joseph','Ruth'];
  const S=['Banda','Phiri','Mwale','Chirwa','Nyirenda','Kamanga','Gondwe','Mkandawire','Tembo','Mhango','Kumwenda','Msiska','Kachingwe','Mbewe','Jere','Nkhoma','Chisale','Mvula','Soko','Manda','Munthali','Kalua','Chimombo','Zgambo','Longwe','Kalilani'];
  let n=0;const out=[];
- const add=(rank,type,base,k)=>{for(let i=0;i<k;i++){const fn=F[n%F.length],sn=S[(n*7+3)%S.length];out.push({id:'c'+n,name:fn+' '+sn,email:(fn+'.'+sn).toLowerCase()+'@example.com',rank,type,base,leave:[]});n++}};
+ const add=(rank,type,base,k)=>{for(let i=0;i<k;i++){const fn=F[n%F.length],sn=S[(n*7+3)%S.length];const m=k=>String(k%12+1).padStart(2,'0');out.push({id:'c'+n,name:fn+' '+sn,email:(fn+'.'+sn).toLowerCase()+'@example.com',rank,type,base,acts:{},lic:'2027-'+m(n)+'-15',med:'2027-'+m(n*5)+'-28',rec:'2027-'+m(n*7)+'-10'});n++}};
  add('CPT','Q400','LLW',5);add('CPT','B737','LLW',4);add('CPT','Q400','BLZ',3);
  add('FO','Q400','LLW',5);add('FO','B737','LLW',4);add('FO','Q400','BLZ',3);
  add('CC','ALL','LLW',20);add('CC','ALL','BLZ',4);
- [[0,[2,3]],[6,[8,9,10]],[14,[0,1]],[25,[4,5,6]],[40,[11,12]]].forEach(([i,d])=>{if(out[i])out[i].leave=d});
+ [[0,[2,3]],[6,[8,9,10]],[14,[0,1]],[25,[4,5,6]],[40,[11,12]]].forEach(([i,d])=>{if(out[i])d.forEach(x=>out[i].acts[x]={type:'leave'})});
+ if(out[2]){out[2].acts[7]={type:'sim',start:'08:00',end:'16:00',note:'OPC and LPC, JNB simulator'};out[2].acts[8]={type:'sim',start:'08:00',end:'16:00',note:'OPC and LPC, JNB simulator'}}
+ if(out[5])out[5].acts[3]={type:'sb',start:'05:00',end:'17:00',note:'Airport standby'};
+ if(out[17])out[17].acts[10]={type:'sb',start:'05:00',end:'17:00',note:'Home standby'};
+ if(out[1])out[1].med='2026-10-10';
+ if(out[19])out[19].lic='2026-10-25';
+ if(out[33])out[33].rec='2026-09-30';
  return out;
 }
-const freshState=()=>({fleet:clone(DEFAULT_FLEET),patterns:DEFAULT_PATTERNS.map(p=>({id:uid(),...clone(p)})),crew:defaultCrew(),rules:{...DEFAULT_RULES},intro:true});
+const freshState=()=>({fleet:clone(DEFAULT_FLEET),patterns:DEFAULT_PATTERNS.map(p=>({id:uid(),...clone(p)})),crew:defaultCrew(),rules:{...DEFAULT_RULES},intro:true,locks:{},excl:{}});
 let state;
 try{state=JSON.parse(localStorage.getItem('crew-roster-v2'))}catch(e){state=null}
 if(!state||!state.crew||!state.fleet)state=freshState();
-state.patterns.forEach(p=>{if(!p.duties){p.duties=[p.legs||[]];delete p.legs}});
-state.rules={...DEFAULT_RULES,...state.rules};
+function migrate(st){
+ st.fleet=st.fleet||[];st.patterns=st.patterns||[];st.crew=st.crew||[];
+ st.patterns.forEach(p=>{if(!p.duties){p.duties=[p.legs||[]];delete p.legs}if(!p.id)p.id=uid();if(!p.dow)p.dow=[]});
+ st.crew.forEach(c=>{if(!c.id)c.id=uid();if(!c.acts){c.acts={};(c.leave||[]).forEach(d=>c.acts[d]={type:'leave'})}delete c.leave;['lic','med','rec','email'].forEach(k=>{if(c[k]==null)c[k]=''})});
+ st.locks=st.locks||{};st.excl=st.excl||{};st.rules={...DEFAULT_RULES,...(st.rules||{})};
+ return st;
+}
+migrate(state);
 const save=()=>{try{localStorage.setItem('crew-roster-v2',JSON.stringify(state))}catch(e){}};
-const ui={tab:'roster',rank:'ALL',base:'ALL',crewRank:'ALL'};
+const ui={tab:'roster',rank:'ALL',base:'ALL',crewRank:'ALL',view:'grid',person:null,sel:new Set()};
 let R=null,draft=null;
 
 const fleetOf=code=>state.fleet.find(f=>f.code===code);
 const typeColor=code=>{const i=state.fleet.findIndex(f=>f.code===code);return 'var(--t'+((i<0?0:i)%6)+')'};
 const typeLabel=t=>t==='ALL'?'All types':t;
 const baseOf=p=>p.duties[0]&&p.duties[0][0]?p.duties[0][0].from:'';
+const pad2=n=>String(n).padStart(2,'0');
+const ymd=d=>{const t=dayDate(d);return t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate())};
+const dayOfDate=v=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');if(!m)return null;return Math.round((Date.UTC(+m[1],m[2]-1,+m[3])-Date.UTC(START.getFullYear(),START.getMonth(),START.getDate()))/864e5)};
+const fmtDate=v=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');return m?new Date(+m[1],m[2]-1,+m[3]).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):''};
+const DOCS=[['lic','Licence'],['med','Medical'],['rec','Recurrent training']];
+// First document that has lapsed by the given roster day (valid through its expiry date)
+function docIssue(c,day){for(const[k,l] of DOCS){const d=dayOfDate(c[k]);if(d!==null&&d<day)return l+' expired '+fmtDate(c[k])}return null}
+function docStatus(c){return DOCS.map(([k,l])=>{const d=dayOfDate(c[k]);if(d===null)return {k,l,v:'',st:'none'};return {k,l,v:c[k],st:d<0?'expired':d<DAYS-1?'period':d<DAYS+30?'soon':'ok'}})}
+const ACT={leave:{label:'Leave',short:'Leave'},sim:{label:'Simulator or recurrent training',short:'SIM',start:'08:00',end:'16:00'},sb:{label:'Standby',short:'SBY',start:'05:00',end:'17:00'}};
+const actOf=(c,d)=>c.acts&&c.acts[d]||null;
+function actInsts(c){
+ const out=[];
+ for(const k in (c.acts||{})){const a=c.acts[k],d=+k;if(!a||a.type==='leave'||d<0||d>=DAYS||!validTime(a.start)||!validTime(a.end))continue;
+  const s=d*1440+toMin(a.start);let e=d*1440+toMin(a.end);if(e<=s)e+=1440;
+  out.push({act:true,id:'a-'+c.id+'-'+d,code:ACT[a.type].short,kind:a.type,day:d,days:[d],start:s,end:e,block:0,periods:[{s,e}],note:a.note||''});}
+ return out;
+}
+const flightsOf=c=>(R&&R.byCrew.get(c.id)||[]).filter(a=>!a.act);
 const bases=()=>[...new Set([...state.patterns.map(baseOf).filter(Boolean),...state.crew.map(c=>c.base)])].sort();
 
 function timeline(legs){
@@ -366,9 +440,10 @@ function buildInstances(){
 const eligible=(c,inst,rank)=>c.rank===rank&&(c.type===inst.type||(c.rank==='CC'&&c.type==='ALL'))&&c.base===inst.base;
 
 function check(c,inst,list,rules){
- if(inst.days.some(x=>c.leave.includes(x)))return inst.days.length>1?'On leave during this trip':'On leave';
+ if(inst.days.some(x=>actOf(c,x)&&actOf(c,x).type==='leave'))return inst.days.length>1?'On leave during this trip':'On leave';
+ for(const x of inst.days){const di=docIssue(c,x);if(di)return di}
  for(const a of list){
-  if(a.days.some(x=>inst.days.includes(x)))return 'Already on '+a.code+' ('+dayLabel(a.day)+')';
+  if(a.days.some(x=>inst.days.includes(x)))return (a.act?(a.kind==='sim'?'Simulator training':'Standby'):'Already on '+a.code)+' ('+dayLabel(a.day)+')';
   if(a.start<inst.end&&inst.start<a.end)return 'Overlaps '+a.code;
   if(a.end<=inst.start&&inst.start-a.end<rules.minRest*60)return 'Only '+dur(inst.start-a.end)+' rest after '+a.code+' ('+dayLabel(a.days[a.days.length-1])+')';
   if(inst.end<=a.start&&a.start-inst.end<rules.minRest*60)return 'Only '+dur(a.start-inst.end)+' rest before '+a.code+' ('+dayLabel(a.day)+')';
@@ -386,20 +461,32 @@ function check(c,inst,list,rules){
 }
 function cost(c,inst,list){
  const blk=list.reduce((s,a)=>s+a.block,0);
- let sc=blk+list.length*1.5;const why=[hrs(blk)+' block and '+list.length+' duties so far'];
+ let sc=blk+list.filter(a=>!a.act).length*1.5;const why=[hrs(blk)+' block and '+list.filter(a=>!a.act).length+' trips so far'];
  const first=inst.days[0],lastD=inst.days[inst.days.length-1];
  const prev=list.find(a=>a.days[a.days.length-1]===first-1),next=list.find(a=>a.days[0]===lastD+1);
  if(prev&&((prev.end%1440)+1440)%1440>=18*60&&((inst.start%1440)+1440)%1440<7*60){sc+=4;why.push('late finish then early start penalised')}
  if(prev||next){sc-=1;why.push('keeps days off together')}
  return {sc:Math.round(sc*10)/10,why};
 }
+function seatIssue(c,inst,rank){
+ if(c.rank!==rank)return 'Wrong position for this seat ('+RANK[c.rank]+')';
+ if(c.base!==inst.base)return 'Based at '+c.base+', this flight starts at '+inst.base;
+ if(!(c.type===inst.type||(c.rank==='CC'&&c.type==='ALL')))return 'Not rated on the '+inst.type;
+ return null;
+}
 function solve(){
- const rules=state.rules,insts=buildInstances(),byCrew=new Map(state.crew.map(c=>[c.id,[]]));
+ const rules=state.rules,insts=buildInstances(),byCrew=new Map(state.crew.map(c=>[c.id,actInsts(c)])),crewById=new Map(state.crew.map(c=>[c.id,c]));
+ const instById=new Map(insts.map(i=>[i.id,i]));
  const seats=[];
- insts.forEach(inst=>inst.seats.forEach((rank,k)=>seats.push({inst,rank,k,crew:null,log:{alts:[],rej:[],notes:[]}})));
- seats.forEach(s=>s.pool=state.crew.filter(c=>eligible(c,s.inst,s.rank)));
- // Multi-day trips first on each day: they are hardest to place
- seats.sort((a,b)=>a.inst.day-b.inst.day||b.inst.days.length-a.inst.days.length||a.pool.length-b.pool.length||a.inst.start-b.inst.start);
+ insts.forEach(inst=>inst.seats.forEach((rank,k)=>seats.push({inst,rank,k,crew:null,locked:false,flag:null,log:{alts:[],rej:[],notes:[]}})));
+ // 1. Scheduler's manual assignments go in first and are never moved
+ for(const key in state.locks){
+  const [iid,rank]=key.split('|'),inst=instById.get(iid);if(!inst)continue;
+  const free=seats.filter(s=>s.inst===inst&&s.rank===rank&&!s.crew);
+  (state.locks[key]||[]).forEach(cid=>{const c=crewById.get(cid),s=free.shift();if(!c||!s)return;s.crew=c;s.locked=true;s.log.notes=['Set manually by the scheduler.'];byCrew.get(c.id).push(inst)});
+ }
+ seats.forEach(s=>{const ex=state.excl[s.inst.id]||[];s.pool=state.crew.filter(c=>eligible(c,s.inst,s.rank)&&!ex.includes(c.id))});
+ const order=seats.filter(s=>!s.crew).sort((a,b)=>a.inst.day-b.inst.day||b.inst.days.length-a.inst.days.length||a.pool.length-b.pool.length||a.inst.start-b.inst.start);
  const assign=s=>{
   const cand=[],rej=[];
   for(const c of s.pool){const list=byCrew.get(c.id),r=check(c,s.inst,list,rules);if(r)rej.push({c,r});else cand.push({c,...cost(c,s.inst,list)})}
@@ -407,9 +494,11 @@ function solve(){
   s.log.rej=rej;s.log.alts=cand.slice(1,4);s.log.legal=cand.length;
   if(cand.length){s.crew=cand[0].c;s.log.pick=cand[0];byCrew.get(s.crew.id).push(s.inst)}
  };
- seats.forEach(assign);
+ // 2. Fill the hardest seats first
+ order.forEach(assign);
+ // 3. Even out hours between crew (manual assignments stay put)
  const rnd=mulberry32(7),load=id=>byCrew.get(id).reduce((t,a)=>t+a.block,0);
- let moves=0;const filled=seats.filter(s=>s.crew);
+ let moves=0;const filled=seats.filter(s=>s.crew&&!s.locked);
  for(let it=0;it<4000&&filled.length;it++){
   const s=filled[Math.floor(rnd()*filled.length)],from=s.crew,lf=load(from.id);
   let best=null,bl=Infinity;
@@ -425,7 +514,10 @@ function solve(){
    s.crew=best;moves++;
   }
  }
+ // 4. Retry open seats
  seats.filter(s=>!s.crew).forEach(assign);
+ // 5. Audit every assignment, so manual changes that break a rule are flagged
+ seats.forEach(s=>{if(!s.crew)return;const list=byCrew.get(s.crew.id).filter(a=>a!==s.inst);s.flag=seatIssue(s.crew,s.inst,s.rank)||check(s.crew,s.inst,list,rules)});
  seats.forEach((s,i)=>s.idx=i);
  return {insts,seats,byCrew,moves};
 }
@@ -437,10 +529,16 @@ function renderSummary(){
  const blk=id=>R.byCrew.get(id).reduce((t,a)=>t+a.block,0);
  const range=ranks=>{const v=state.crew.filter(c=>ranks.includes(c.rank)).map(c=>blk(c.id));return v.length?hrs(Math.min(...v))+'–'+hrs(Math.max(...v)):'–'};
  const bad=state.patterns.filter(p=>validate(p,p.id).e.length).length;
+ const flaggedSeats=R.seats.filter(s=>s.flag).sort((a,b)=>a.inst.start-b.inst.start),flagged=flaggedSeats.length;
+ const docAlerts=[];state.crew.forEach(c=>docStatus(c).forEach(d=>{if(d.st==='expired'||d.st==='period'||d.st==='soon')docAlerts.push({c,d})}));
+ $('#flags').innerHTML=(flagged||docAlerts.length)?`<h2>Flags</h2><p class="note">Rule breaks come from manual changes. Crew with an expired document are never rostered automatically.</p><div class="flaglist">${
+  flaggedSeats.map(s=>`<div class="flagrow"><button class="btn small" data-seat="${s.idx}">${esc(s.inst.code)} ${dayLabel(s.inst.day)}</button><span><b>${esc(s.crew.name)}</b>: ${esc(s.flag)}</span></div>`).join('')+
+  docAlerts.map(({c,d})=>`<div class="flagrow ${d.st==='soon'?'warn':''}"><button class="btn ghost small" data-editc="${c.id}">Update</button><span><b>${esc(c.name)}</b>: ${d.l} ${d.st==='expired'?'expired':'expires'} ${fmtDate(d.v)}${d.st==='period'?' (during this roster, no flights after that)':d.st==='expired'?' (cannot be rostered)':' (soon after this roster)'}</span></div>`).join('')}</div>`:'';
  $('#summary').innerHTML=`
   <div><b>${total-open}/${total}</b><span>Seats filled</span></div>
   <div class="${open?'bad':'good'}"><b>${open}</b><span>Open time</span></div>
-  <div class="good"><b>0</b><span>Rule breaks</span></div>
+  <div class="${flagged?'bad':'good'}"><b>${flagged}</b><span>Rule breaks</span></div>
+  <div class="${docAlerts.length?'bad':'good'}"><b>${docAlerts.length}</b><span>Expiry alerts</span></div>
   <div><b>${range(['CPT','FO'])}</b><span>Block per pilot</span></div>
   <div><b>${range(['CC'])}</b><span>Block per cabin crew</span></div>
   ${bad?`<div class="bad"><b>${bad}</b><span>Flights need fixing</span></div>`:''}`;
@@ -450,26 +548,49 @@ function renderSummary(){
 }
 function renderFilters(){
  const f=(k,v,t)=>`<button class="chip" data-f="${k}" data-v="${esc(v)}" aria-pressed="${ui[k]===v}">${esc(t)}</button>`;
- $('#filters').innerHTML=f('rank','ALL','Everyone')+f('rank','CPT','Captains')+f('rank','FO','First officers')+f('rank','CC','Cabin crew')+'<span style="width:12px"></span>'+f('base','ALL','All bases')+bases().map(b=>f('base',b,b)).join('');
- $('#legend').innerHTML=state.fleet.map(t=>`<span><i class="sw" style="background:${typeColor(t.code)}"></i>${esc(t.code)}</span>`).join('')+'<span><i class="sw" style="background:var(--warn)"></i>Open time or night stop</span><span>Tap a duty to see why that crew member got it. Tap an empty day to add or remove leave.</span>';
+ const viewSw=f('view','grid','Whole roster')+f('view','person','Individual roster');
+ if(ui.view==='person'){
+  if(!state.crew.some(c=>c.id===ui.person))ui.person=state.crew[0]?.id||null;
+  $('#filters').innerHTML=viewSw+'<span style="width:12px"></span><label style="flex-direction:row;align-items:center;gap:8px">Crew member<select id="personsel">'+
+   Object.entries(RANK).map(([rk,rl])=>`<optgroup label="${rl}">${state.crew.filter(c=>c.rank===rk).map(c=>`<option value="${c.id}" ${c.id===ui.person?'selected':''}>${esc(c.name)} (${esc(c.base)})</option>`).join('')}</optgroup>`).join('')+'</select></label>';
+ }else $('#filters').innerHTML=viewSw+'<span style="width:12px"></span>'+f('rank','ALL','Everyone')+f('rank','CPT','Captains')+f('rank','FO','First officers')+f('rank','CC','Cabin crew')+'<span style="width:12px"></span>'+f('base','ALL','All bases')+bases().map(b=>f('base',b,b)).join('');
+ $('#legend').innerHTML=state.fleet.map(t=>`<span><i class="sw" style="background:${typeColor(t.code)}"></i>${esc(t.code)}</span>`).join('')+'<span><i class="sw" style="background:var(--t4)"></i>Simulator</span><span><i class="sw" style="background:var(--t5)"></i>Standby</span><span><i class="sw" style="background:var(--err)"></i>Rule break</span><span>Tap a flight to see why that crew member got it or to change crew. Tap any other day to add leave, simulator training, standby, or a flight.</span>';
 }
 function stripHTML(s,k){
  const i=s.inst,x=i.d.days[k],multi=i.days.length>1;
- return `<button class="strip${k>0?' cont':''}" style="border-left-color:${typeColor(i.type)}" data-seat="${s.idx}"><span class="cd">${esc(i.code)}${multi?' day '+(k+1):''}</span><span class="rt">${esc(legRoute(x.legs))}</span><span class="tm">${hhmm(x.tl[0].d)}–${hhmm(x.tl[x.tl.length-1].a)}</span>${k<i.days.length-1?`<span class="ns">Night stop ${esc(x.end)}</span>`:''}</button>`;
+ return `<button class="strip${k>0?' cont':''}${s.flag?' flag':''}" style="border-left-color:${typeColor(i.type)}" data-seat="${s.idx}"><span class="cd">${esc(i.code)}${multi?' day '+(k+1):''}</span><span class="rt">${esc(legRoute(x.legs))}</span><span class="tm">${hhmm(x.tl[0].d)}–${hhmm(x.tl[x.tl.length-1].a)}</span>${k<i.days.length-1?`<span class="ns">Night stop ${esc(x.end)}</span>`:''}${s.flag?'<span class="fl">! '+esc(s.flag.split(' (')[0])+'</span>':s.locked?'<span class="lk">Set manually</span>':''}</button>`;
+}
+function actCell(c,d){
+ const a=actOf(c,d),lbl=`${esc(c.name)}, ${dayLabel(d)}`;
+ if(!a)return `<button class="cell" data-day="${c.id}|${d}" aria-label="Plan ${lbl}"></button>`;
+ if(a.type==='leave')return `<button class="cell leave" data-day="${c.id}|${d}" aria-label="Leave, ${lbl}">Leave</button>`;
+ return `<button class="cell act ${a.type}" data-day="${c.id}|${d}" aria-label="${ACT[a.type].label}, ${lbl}"><b>${ACT[a.type].short}</b><span>${a.start}–${a.end}</span></button>`;
+}
+function docMeta(c){const bad=docStatus(c).filter(d=>d.st==='expired'||d.st==='period');return bad.length?`<span class="meta docbad">${bad.map(d=>d.l+' '+(d.st==='expired'?'expired':'ends '+fmtDate(d.v))).join(', ')}</span>`:''}
+function renderPerson(){
+ const c=state.crew.find(x=>x.id===ui.person);
+ if(!c){$('#personview').innerHTML='<p class="note">No crew yet. Add crew on the Crew tab.</p>';return}
+ const map=new Map();R.seats.forEach(s=>{if(s.crew===c)s.inst.days.forEach((d,k)=>map.set(d,[s,k]))});
+ const st=stats(c),docs=docStatus(c).map(d=>`<span class="${d.st==='expired'||d.st==='period'?'docbad':d.st==='soon'?'docwarn':''}">${d.l}: ${d.v?fmtDate(d.v):'not set'}</span>`).join('. ');
+ let h=`<div class="panel"><div class="panelhead"><div><h2>${esc(c.name)}</h2><span class="meta">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, based ${esc(c.base)}. ${st.duties} duty days, ${dur(st.block*60)} block, ${st.off} days off.</span><span class="meta">${docs}</span></div>
+  <div class="actions"><button class="btn small" data-mailc="${c.id}">Email PDF</button><button class="btn ghost small" data-pdfc="${c.id}">Save PDF</button><button class="btn ghost small" data-printc="${c.id}">Print</button><button class="btn ghost small" data-editc="${c.id}">Edit details</button></div></div>`;
+ for(let d=0;d<DAYS;d++){const m=map.get(d);h+=`<div class="pday"><span class="pd">${shortDate(d)}</span>${m?stripHTML(m[0],m[1]):actCell(c,d).replace('class="cell"','class="cell" style="border-color:var(--line);text-align:left;padding-left:8px"').replace('></button>','>Day off</button>')}</div>`}
+ $('#personview').innerHTML=h+'</div>';
 }
 function renderGrid(){
+ $('#gridwrap').hidden=ui.view==='person';$('#personview').hidden=ui.view!=='person';
+ if(ui.view==='person'){renderPerson();return}
  const map=new Map();R.seats.forEach(s=>{if(s.crew)s.inst.days.forEach((d,k)=>map.set(s.crew.id+'|'+d,[s,k]))});
  const crew=state.crew.filter(c=>(ui.rank==='ALL'||c.rank===ui.rank)&&(ui.base==='ALL'||c.base===ui.base));
  let h='<thead><tr><th class="who">Crew</th>';
  for(let d=0;d<DAYS;d++)h+=`<th class="${d%7>4?'we':''}">${dayLabel(d)}</th>`;
  h+='<th>Block</th></tr></thead><tbody>';
  for(const c of crew){
-  h+=`<tr><th class="who" scope="row"><span class="nm">${esc(c.name)}</span><span class="meta">${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</span></th>`;
+  h+=`<tr><th class="who" scope="row"><span class="nm">${esc(c.name)}</span><span class="meta">${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</span>${docMeta(c)}</th>`;
   for(let d=0;d<DAYS;d++){
    const m=map.get(c.id+'|'+d);
    if(m)h+=`<td>${stripHTML(m[0],m[1])}</td>`;
-   else if(c.leave.includes(d))h+=`<td><button class="cell leave" data-leave="${c.id}|${d}" aria-label="Remove leave for ${esc(c.name)} on ${dayLabel(d)}">Leave</button></td>`;
-   else h+=`<td><button class="cell" data-leave="${c.id}|${d}" aria-label="Add leave for ${esc(c.name)} on ${dayLabel(d)}"></button></td>`;
+   else h+=`<td>${actCell(c,d)}</td>`;
   }
   h+=`<td class="tot">${hrs(R.byCrew.get(c.id).reduce((t,a)=>t+a.block,0))}</td></tr>`;
  }
@@ -500,21 +621,24 @@ function renderFleet(){
   <td class="acts"><button class="btn danger small" data-delfleet="${esc(f.code)}">Remove</button></td></tr>`).join('')||'<tr><td colspan="5">No aircraft yet. Add one above.</td></tr>')+'</tbody>';
 }
 function crewFormFields(c){
- c=c||{name:'',email:'',rank:'CPT',type:state.fleet[0]?.code||'',base:bases()[0]||'LLW'};
+ c=c||{name:'',email:'',lic:'',med:'',rec:'',rank:'CPT',type:state.fleet[0]?.code||'',base:bases()[0]||'LLW'};
  const opts=[...state.fleet.map(f=>f.code),'ALL'].map(t=>`<option value="${esc(t)}" ${c.type===t?'selected':''}>${t==='ALL'?'All types (cabin crew)':esc(t)}</option>`).join('');
  return `<label>Name<input name="name" required value="${esc(c.name)}" placeholder="e.g. Tiwonge Banda"></label>
   <label>Position<select name="rank">${Object.entries(RANK).map(([k,v])=>`<option value="${k}" ${c.rank===k?'selected':''}>${v}</option>`).join('')}</select></label>
   <label>Aircraft rating<select name="type">${opts}</select></label>
   <label>Base<input name="base" class="code" list="bases" required maxlength="4" value="${esc(c.base)}"></label>
-  <label>Email (optional)<input name="email" type="email" value="${esc(c.email||'')}" placeholder="name@yourairline.mw"></label>`;
+  <label>Email (optional)<input name="email" type="email" value="${esc(c.email||'')}" placeholder="name@yourairline.mw"></label>
+  <label>Licence expiry<input name="lic" type="date" value="${esc(c.lic||'')}"></label>
+  <label>Medical expiry<input name="med" type="date" value="${esc(c.med||'')}"></label>
+  <label>Recurrent training expiry<input name="rec" type="date" value="${esc(c.rec||'')}"></label>`;
 }
 function renderCrew(){
  $('#addcrew').innerHTML=crewFormFields()+'<button class="btn" type="submit">Add crew member</button>';
  const f=(v,t)=>`<button class="chip" data-crewrank="${v}" aria-pressed="${ui.crewRank===v}">${t}</button>`;
  $('#crewfilters').innerHTML=f('ALL','Everyone')+f('CPT','Captains')+f('FO','First officers')+f('CC','Cabin crew');
  const list=state.crew.filter(c=>ui.crewRank==='ALL'||c.rank===ui.crewRank);
- $('#crewlist').innerHTML='<thead><tr><th>Name</th><th>Position</th><th>Aircraft</th><th>Base</th><th>Email</th><th>Trips</th><th>Block</th><th>Leave days</th><th></th></tr></thead><tbody>'+
- (list.map(c=>{const l=R.byCrew.get(c.id)||[];return `<tr><td>${esc(c.name)}</td><td>${RANK[c.rank]}</td><td>${esc(typeLabel(c.type))}</td><td>${esc(c.base)}</td><td>${c.email?esc(c.email):'<span class="noemail">None</span>'}</td><td>${l.length}</td><td>${hrs(l.reduce((t,a)=>t+a.block,0))}</td><td>${c.leave.length}</td><td class="acts"><button class="btn ghost small" data-editc="${c.id}">Edit</button> <button class="btn danger small" data-del="${c.id}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="8">No crew yet.</td></tr>')+'</tbody>';
+ $('#crewlist').innerHTML='<thead><tr><th>Name</th><th>Position</th><th>Aircraft</th><th>Base</th><th>Email</th><th>Licence</th><th>Medical</th><th>Recurrent</th><th>Trips</th><th>Block</th><th>Leave</th><th>Sim</th><th>Standby</th><th></th></tr></thead><tbody>'+
+ (list.map(c=>{const l=flightsOf(c),av=Object.values(c.acts||{}),cnt=t=>av.filter(a=>a.type===t).length,ds=docStatus(c);return `<tr><td>${esc(c.name)}</td><td>${RANK[c.rank]}</td><td>${esc(typeLabel(c.type))}</td><td>${esc(c.base)}</td><td>${c.email?esc(c.email):'<span class="noemail">None</span>'}</td>${ds.map(d=>`<td class="${d.st==='expired'||d.st==='period'?'docbad':d.st==='soon'?'docwarn':''}">${d.v?fmtDate(d.v):'<span class="noemail">Not set</span>'}</td>`).join('')}<td>${l.length}</td><td>${hrs(l.reduce((t,a)=>t+a.block,0))}</td><td>${cnt('leave')}</td><td>${cnt('sim')}</td><td>${cnt('sb')}</td><td class="acts"><button class="btn ghost small" data-editc="${c.id}">Edit</button> <button class="btn danger small" data-del="${c.id}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="14">No crew yet.</td></tr>')+'</tbody>';
 }
 function renderRules(){
  const r=state.rules,f=(k,t,hint,min,max)=>`<label>${t}<input type="number" data-rule="${k}" value="${r[k]}" min="${min}" max="${max}" step="1"><small>${hint}</small></label>`;
@@ -553,13 +677,63 @@ function openSeat(s){
  <div class="tablewrap"><table class="list"><thead><tr>${multi?'<th>Day</th>':''}<th>From</th><th>To</th><th>Departs</th><th>Arrives</th></tr></thead><tbody>${rows}</tbody></table></div>`;
  if(s.crew){
   h+=`<h4>${RANK[s.rank]}: ${esc(s.crew.name)}</h4>`;
+  if(s.flag)h+=`<p class="docbad">Rule break: ${esc(s.flag)}</p>`;
   if(s.log.notes.length)h+=`<p>${esc(s.log.notes[0])}</p>`;
   else if(s.log.pick)h+=`<p>Best fit of ${s.log.legal} legal ${RANK[s.rank].toLowerCase()}${s.log.legal>1?'s':''} (${esc(s.log.pick.why.join(', '))}).</p>`;
   if(s.log.alts.length&&!s.log.notes.length)h+=`<h4>Next best</h4><ul>${s.log.alts.map(a=>`<li>${esc(a.c.name)} <span class="reason">${esc(a.why[0])}</span></li>`).join('')}</ul>`;
  }else h+=`<h4>Open: ${RANK[s.rank]}</h4><p>${s.pool.length?'Every qualified crew member at '+esc(i.base)+' is blocked by a rule or leave.':'Nobody at '+esc(i.base)+' is rated for this seat on the '+esc(i.type)+'.'} You can add crew, move leave, or change the flight days.</p>`;
  if(s.log.rej.length)h+=`<h4>Not legal for this trip</h4><ul>${s.log.rej.slice(0,10).map(r=>`<li>${esc(r.c.name)} <span class="reason">${esc(r.r)}</span></li>`).join('')}</ul>`;
- if(crewOn.length)h+=`<h4>Crew on this flight</h4><ul>${crewOn.map(x=>`<li>${RANK[x.rank]} ${esc(x.crew.name)}</li>`).join('')}</ul>`;
+ if(crewOn.length)h+=`<h4>Crew on this flight</h4><ul>${crewOn.map(x=>`<li>${RANK[x.rank]} ${esc(x.crew.name)}${x.locked?' <span class="reason">(set manually)</span>':''}${x.flag?' <span class="docbad">'+esc(x.flag)+'</span>':''}</li>`).join('')}</ul>`;
+ h+=`<h4>Change crew manually</h4>`+swapControls(s);
  $('#dlgbody').innerHTML=h;dlg.showModal();
+}
+function candidates(inst,rank,exceptId){
+ return state.crew.filter(c=>c.rank===rank&&c.id!==exceptId).map(c=>{
+  const list=(R.byCrew.get(c.id)||[]).filter(a=>a!==inst);
+  const si=seatIssue(c,inst,rank),r=si||check(c,inst,list,state.rules);
+  return {c,r,sev:si?2:r?1:0};
+ }).sort((a,b)=>a.sev-b.sev||a.c.name.localeCompare(b.c.name));
+}
+function swapControls(s){
+ const cands=candidates(s.inst,s.rank,s.crew&&s.crew.id),opts=cands.map(o=>`<option value="${o.c.id}">${esc(o.c.name)} (${esc(o.c.base)} ${esc(typeLabel(o.c.type))}): ${o.r?esc(o.r):'legal'}</option>`).join('');
+ const manual=Object.keys(state.locks).some(k=>k.startsWith(s.inst.id+'|'))||(state.excl[s.inst.id]||[]).length;
+ return `<label>${s.crew?'Replace '+esc(s.crew.name)+' with':'Put this crew member in the open seat'}<select id="swapsel">${opts}</select></label>
+  <p class="note">${cands.some(o=>!o.r)?'Legal choices are listed first.':'Nobody is fully legal for this trip right now, so the closest options are listed first.'} You can still pick someone who breaks a rule; the roster will flag it.</p>
+  <div class="actions"><button class="btn" id="swapgo" data-swapseat="${s.idx}">${s.crew?'Replace':'Assign'}</button>${s.crew?`<button class="btn danger" data-unseat="${s.idx}">Take ${esc(s.crew.name.split(' ')[0])} off this flight</button>`:''}${manual?`<button class="btn ghost" data-autoinst="${esc(s.inst.id)}">Undo manual changes on this flight</button>`:''}</div>`;
+}
+function lockCrew(inst,rank,c,replaced){
+ const key=inst.id+'|'+rank;let lock=(state.locks[key]||[]).filter(id=>id!==c.id&&(!replaced||id!==replaced.id));
+ lock.push(c.id);state.locks[key]=lock;
+ let ex=(state.excl[inst.id]||[]).filter(id=>id!==c.id);if(replaced&&!ex.includes(replaced.id))ex.push(replaced.id);state.excl[inst.id]=ex;
+}
+function openDay(c,d){
+ const a=actOf(c,d);ui.dayDraft={c,d,type:a?a.type:'off'};
+ const t=a&&a.type!=='leave'?a:ACT.sim;
+ const trips=R.insts.filter(i=>i.day===d&&i.seats.includes(c.rank)).map(i=>{const list=(R.byCrew.get(c.id)||[]).filter(x=>x!==i);return {i,r:seatIssue(c,i,c.rank)||check(c,i,list,state.rules)}}).sort((x,y)=>((x.r?1:0)-(y.r?1:0))||x.i.start-y.i.start);
+ const di=docIssue(c,d);
+ const chip=(v,l)=>`<button type="button" class="chip" data-acttype="${v}" aria-pressed="${ui.dayDraft.type===v}">${l}</button>`;
+ $('#dlgbody').innerHTML=`<button class="btn ghost small close" type="button" data-close>Close</button><h3>${esc(c.name)}</h3>
+  <p class="note">${longDay(d)}. ${RANK[c.rank]}, ${esc(typeLabel(c.type))}, ${esc(c.base)}.</p>${di?`<p class="docbad">${esc(di)}</p>`:''}
+  <fieldset><legend>Set this day as</legend><div class="days">${chip('off','Day off')}${chip('leave','Leave')}${chip('sim','Simulator training')}${chip('sb','Standby')}</div></fieldset>
+  <div id="acttimes" ${ui.dayDraft.type==='sim'||ui.dayDraft.type==='sb'?'':'hidden'}><div class="form" style="margin-top:10px">
+   <label>Starts<input type="time" id="actstart" value="${esc(t.start)}"></label><label>Ends<input type="time" id="actend" value="${esc(t.end)}"></label>
+   <label style="flex:1 1 200px">Note<input id="actnote" value="${esc(a&&a.note||'')}" placeholder="e.g. OPC, JNB simulator"></label></div>
+   <p class="note">Simulator training and standby count as duty for rest and duty-hour limits.</p></div>
+  <div class="form" style="margin-top:10px"><label>Number of days<input type="number" id="actdays" min="1" max="${DAYS-d}" value="1"></label><span class="note" style="margin:0">Applies to ${dayLabel(d)} and the days after it.</span></div>
+  <ul class="errs" id="acterr"></ul>
+  <div class="actions"><button class="btn" id="actsave">Save</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
+  <h4>Or put ${esc(c.name.split(' ')[0])} on a flight</h4>
+  ${trips.length?`<div class="optlist">${trips.map(o=>`<button class="btn ghost" data-putflight="${esc(o.i.id)}">${esc(o.i.code)} ${esc(o.i.route)}, ${hhmm(o.i.start)}–${hhmm(o.i.end)} <span class="${o.r?'docbad':'reason'}">${o.r?esc(o.r):'legal'}</span></button>`).join('')}</div>`:'<p class="note">No flights start on this day with a '+RANK[c.rank].toLowerCase()+' seat.</p>'}`;
+ dlg.showModal();
+}
+function saveDay(){
+ const {c,d,type}=ui.dayDraft,n=Math.max(1,Math.min(DAYS-d,Math.round(+$('#actdays').value||1)));
+ let start='',end='',note='';
+ if(type==='sim'||type==='sb'){start=$('#actstart').value;end=$('#actend').value;note=$('#actnote').value.trim();
+  if(!validTime(start)||!validTime(end)){$('#acterr').innerHTML='<li>Set a start and end time.</li>';return}}
+ for(let k=0;k<n;k++){const day=d+k;if(type==='off')delete c.acts[day];else c.acts[day]=type==='leave'?{type}:{type,start,end,note}}
+ dlg.close();
+ commit((type==='off'?'Cleared ':ACT[type].label+' set for ')+c.name+', '+dayLabel(d)+(n>1?' to '+dayLabel(d+n-1):'')+'. Roster rebuilt.');
 }
 function openFlightEditor(p,isNew){
  if(!state.fleet.length){toast('Add an aircraft type first.');return}
@@ -634,12 +808,12 @@ function openCrewEditor(c){
 }
 function readCrewForm(form){
  const fd=new FormData(form),name=String(fd.get('name')).trim(),rank=fd.get('rank'),type=fd.get('type'),base=String(fd.get('base')).trim().toUpperCase();
- const email=String(fd.get('email')||'').trim(),err=[];
+ const email=String(fd.get('email')||'').trim(),lic=String(fd.get('lic')||''),med=String(fd.get('med')||''),rec=String(fd.get('rec')||''),err=[];
  if(email&&!/^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email))err.push('Check the email address.');
  if(!name)err.push('Enter a name.');
  if(!/^[A-Z]{3,4}$/.test(base))err.push('Enter a 3 or 4 letter base code.');
  if(rank!=='CC'&&type==='ALL')err.push('Pilots need one aircraft rating.');
- return {name,email,rank,type,base,err};
+ return {name,email,lic,med,rec,rank,type,base,err};
 }
 let pending=null;
 function askConfirm(title,msg,label,fn){
@@ -658,11 +832,13 @@ const shortDate=d=>dayDate(d).toLocaleDateString('en-GB',{weekday:'short',day:'n
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const legLines=x=>x.legs.map(l=>l.from+' '+l.dep+' → '+l.to+' '+l.arr);
 function crewDays(c){
- const out=Array.from({length:DAYS},(_,d)=>({t:c.leave.includes(d)?'leave':'off'}));
- for(const inst of (R.byCrew.get(c.id)||[]))inst.days.forEach((d,k)=>{if(d<DAYS){const x=inst.d.days[k],b=inst.day*1440;out[d]={t:'duty',inst,k,x,rep:b+x.rep,rel:b+x.rel,ns:k<inst.days.length-1?x.end:null}}});
+ const out=Array.from({length:DAYS},(_,d)=>{const a=actOf(c,d);return a?{t:a.type,a}:{t:'off'}});
+ for(const inst of flightsOf(c))inst.days.forEach((d,k)=>{if(d<DAYS){const x=inst.d.days[k],b=inst.day*1440;out[d]={t:'duty',inst,k,x,rep:b+x.rep,rel:b+x.rel,ns:k<inst.days.length-1?x.end:null}}});
  return out;
 }
-function stats(c){const days=crewDays(c),l=R.byCrew.get(c.id)||[];return {duties:days.filter(x=>x.t==='duty').length,leave:days.filter(x=>x.t==='leave').length,off:days.filter(x=>x.t==='off').length,block:l.reduce((t,a)=>t+a.block,0)}}
+function stats(c){const days=crewDays(c),n=t=>days.filter(x=>x.t===t).length;return {duties:n('duty'),leave:n('leave'),sim:n('sim'),sb:n('sb'),off:n('off'),block:flightsOf(c).reduce((t,a)=>t+a.block,0)}}
+const actText=x=>x.t==='leave'?'Leave':x.t==='sim'?'Simulator training '+x.a.start+'–'+x.a.end+(x.a.note?', '+x.a.note:''):x.t==='sb'?'Standby '+x.a.start+'–'+x.a.end+(x.a.note?', '+x.a.note:''):'Day off';
+const totalsText=st=>`Duty days ${st.duties}. Block time ${dur(st.block*60)}. Simulator ${st.sim}. Standby ${st.sb}. Days off ${st.off}. Leave ${st.leave}.`;
 const PRINT_CSS=`.pr{font:11px/1.35 -apple-system,system-ui,"Segoe UI",Roboto,Arial,sans-serif;color:#000;background:#fff}
 .pr h1{font-size:18px;margin:0 0 2px}.pr .sub{margin:0 0 10px;color:#333}
 .pr table{border-collapse:collapse;width:100%}.pr th,.pr td{border:1px solid #999;padding:3px 4px;text-align:left;vertical-align:top}
@@ -677,7 +853,7 @@ function printBody(kind,list){
   h+='<th>Block</th></tr></thead><tbody>';
   for(const c of list){
    h+=`<tr><td><b>${esc(c.name)}</b><br>${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</td>`;
-   crewDays(c).forEach(x=>{h+=x.t==='duty'?`<td><b>${esc(x.inst.code)}</b><br>${hhmm(x.rep)}–${hhmm(x.rel)}${x.ns?`<br><span class="ns">NS ${esc(x.ns)}</span>`:''}</td>`:x.t==='leave'?'<td class="lv">Leave</td>':'<td></td>'});
+   crewDays(c).forEach(x=>{h+=x.t==='duty'?`<td><b>${esc(x.inst.code)}</b><br>${hhmm(x.rep)}–${hhmm(x.rel)}${x.ns?`<br><span class="ns">NS ${esc(x.ns)}</span>`:''}</td>`:x.t==='off'?'<td></td>':x.t==='leave'?'<td class="lv">Leave</td>':`<td class="lv">${ACT[x.t].short}<br>${x.a.start}–${x.a.end}</td>`});
    h+=`<td>${hrs(stats(c).block)}</td></tr>`;
   }
   return h+'</tbody></table>';
@@ -688,9 +864,9 @@ function printBody(kind,list){
    <table><thead><tr><th>Date</th><th>Duty</th><th>Report</th><th>Flights</th><th>Release</th></tr></thead><tbody>`;
   crewDays(c).forEach((x,d)=>{
    if(x.t==='duty')h+=`<tr><td>${shortDate(d)}</td><td><b>${esc(x.inst.code)}</b><br>${esc(x.inst.type)}</td><td>${hhmm(x.rep)}</td><td>${legLines(x.x).map(esc).join('<br>')}</td><td>${hhmm(x.rel)}${x.ns?`<br><span class="ns">Night stop ${esc(x.ns)}</span>`:''}</td></tr>`;
-   else h+=`<tr><td>${shortDate(d)}</td><td class="${x.t==='leave'?'lv':''}" colspan="4">${x.t==='leave'?'Leave':'Day off'}</td></tr>`;
+   else h+=`<tr><td>${shortDate(d)}</td><td class="${x.t!=='off'?'lv':''}" colspan="4">${esc(actText(x))}</td></tr>`;
   });
-  return h+`</tbody></table><p class="tot">Duty days ${st.duties}. Block time ${dur(st.block*60)}. Days off ${st.off}. Leave ${st.leave}.</p></section>`;
+  return h+`</tbody></table><p class="tot">${totalsText(st)}</p></section>`;
  }).join('');
 }
 const printDoc=(kind,list,title)=>`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>body{margin:16px}${PRINT_CSS}@page{${kind==='full'?'size:A4 landscape;':''}margin:10mm}</style></head><body class="pr">${printBody(kind,list)}</body></html>`;
@@ -703,7 +879,7 @@ function doPrint(kind,list){
 function csvAll(){
  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
  const rows=[['Crew','Position','Aircraft','Base','Email',...Array.from({length:DAYS},(_,d)=>shortDate(d)),'Block hours']];
- for(const c of state.crew)rows.push([c.name,RANK[c.rank],typeLabel(c.type),c.base,c.email||'',...crewDays(c).map(x=>x.t==='duty'?x.inst.code+' '+hhmm(x.rep)+'-'+hhmm(x.rel)+(x.ns?' night stop '+x.ns:''):x.t==='leave'?'Leave':''),(Math.round(stats(c).block*10)/10)]);
+ for(const c of state.crew)rows.push([c.name,RANK[c.rank],typeLabel(c.type),c.base,c.email||'',...crewDays(c).map(x=>x.t==='duty'?x.inst.code+' '+hhmm(x.rep)+'-'+hhmm(x.rel)+(x.ns?' night stop '+x.ns:''):x.t==='off'?'':actText(x)),(Math.round(stats(c).block*10)/10)]);
  return '\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n');
 }
 function icsFor(c){
@@ -711,7 +887,9 @@ function icsFor(c){
  const t=abs=>{const di=Math.floor(abs/1440),m=((abs%1440)+1440)%1440,dt=dayDate(di);return ''+dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+'T'+pad(Math.floor(m/60))+pad(m%60)+'00'};
  const now=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
  const out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Crew Roster//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+e('Roster '+c.name)];
- for(const inst of (R.byCrew.get(c.id)||[]))inst.d.days.forEach((x,k)=>{const b=inst.day*1440;
+ for(const k in (c.acts||{})){const a=c.acts[k],d=+k;if(!a||a.type==='leave'||d<0||d>=DAYS)continue;const s0=d*1440+toMin(a.start);let e0=d*1440+toMin(a.end);if(e0<=s0)e0+=1440;
+  out.push('BEGIN:VEVENT','UID:act-'+c.id+'-'+d+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(s0),'DTEND:'+t(e0),'SUMMARY:'+e(ACT[a.type].label),'DESCRIPTION:'+e(a.note||''),'END:VEVENT')}
+ for(const inst of flightsOf(c))inst.d.days.forEach((x,k)=>{const b=inst.day*1440;
   out.push('BEGIN:VEVENT','UID:'+inst.id+'-'+k+'-'+c.id+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(b+x.rep),'DTEND:'+t(b+x.rel),
    'SUMMARY:'+e(inst.code+' '+legRoute(x.legs)),'LOCATION:'+e(x.legs[0].from),
    'DESCRIPTION:'+e('Report '+hhmm(b+x.rep)+'\n'+legLines(x).join('\n')+'\nRelease '+hhmm(b+x.rel)+(k<inst.days.length-1?'\nNight stop '+x.end:'')),'END:VEVENT')});
@@ -724,7 +902,7 @@ function fullText(){
  let t=`Crew roster, ${PERIOD}. Times are local.\n\n`;
  for(const c of state.crew){
   t+=`${c.name} (${RANK[c.rank]}, ${typeLabel(c.type)}, ${c.base})\n`;
-  const lines=[];crewDays(c).forEach((x,d)=>{if(x.t==='duty')lines.push(`  ${shortDate(d)}  ${x.inst.code}  ${hhmm(x.rep)}-${hhmm(x.rel)}  ${x.inst.d.days[x.k].legs.length?legRoute(x.x.legs):''}${x.ns?'  night stop '+x.ns:''}`);else if(x.t==='leave')lines.push(`  ${shortDate(d)}  Leave`)});
+  const lines=[];crewDays(c).forEach((x,d)=>{if(x.t==='duty')lines.push(`  ${shortDate(d)}  ${x.inst.code}  ${hhmm(x.rep)}-${hhmm(x.rel)}  ${x.inst.d.days[x.k].legs.length?legRoute(x.x.legs):''}${x.ns?'  night stop '+x.ns:''}`);else if(x.t!=='off')lines.push(`  ${shortDate(d)}  ${actText(x)}`)});
   t+=(lines.join('\n')||'  No duties')+'\n\n';
  }
  return t;
@@ -760,15 +938,15 @@ function pdfPersonPages(c){
  const footer=()=>T(M,28,'Crew roster, printed '+stamp,8,false,0.45);
  header(false);
  crewDays(c).forEach((x,d)=>{
-  const cells=x.t==='duty'?[[shortDate(d)],[x.inst.code,x.inst.type],[hhmm(x.rep)],legLines(x.x),[hhmm(x.rel)].concat(x.ns?['Night stop '+x.ns]:[])]:[[shortDate(d)],[x.t==='leave'?'Leave':'Day off'],[],[],[]];
+  const cells=x.t==='duty'?[[shortDate(d)],[x.inst.code,x.inst.type],[hhmm(x.rep)],legLines(x.x),[hhmm(x.rel)].concat(x.ns?['Night stop '+x.ns]:[])]:(x.t==='sim'||x.t==='sb')?[[shortDate(d)],[x.t==='sim'?'SIM':'Standby'],[x.a.start],[x.a.note||ACT[x.t].label],[x.a.end]]:[[shortDate(d)],[x.t==='leave'?'Leave':'Day off'],[],[],[]];
   const h=Math.max(...cells.map(a=>a.length))*12+8;
   if(y-h<60){footer();pages.push(cs);header(true)}
-  if(x.t==='leave')cs+=`0.95 g ${M} ${y-h} ${TW} ${h-0.8} re f\n`;
-  cells.forEach((lines,i)=>lines.forEach((v,j)=>T(cols[i]+4,y-13-j*12,v,9.5,x.t==='duty'&&i===1&&j===0,x.t==='off'?0.45:0)));
+  if(x.t!=='off'&&x.t!=='duty')cs+=`${x.t==='leave'?0.95:0.91} g ${M} ${y-h} ${TW} ${h-0.8} re f\n`;
+  cells.forEach((lines,i)=>lines.forEach((v,j)=>T(cols[i]+4,y-13-j*12,v,9.5,x.t!=='off'&&i===1&&j===0,x.t==='off'?0.45:0)));
   cs+=`0.75 G 0.5 w ${M} ${y-h} m ${M+TW} ${y-h} l S\n`;y-=h;
  });
  if(y<90){footer();pages.push(cs);header(true)}
- const st=stats(c);T(M,y-22,`Duty days ${st.duties}. Block time ${dur(st.block*60)}. Days off ${st.off}. Leave ${st.leave}.`,10,true);
+ const st=stats(c);T(M,y-22,totalsText(st),10,true);
  footer();pages.push(cs);return pages;
 }
 const pdfFor=list=>pdfBytes(list.flatMap(pdfPersonPages));
@@ -841,29 +1019,176 @@ function composePerson(c){
  openCompose({title:'Send roster PDF to '+c.name,to:c.email||'',subject:'Your roster, '+PERIOD,body:personText(c),person:c,
   pdfOnly:true,files:[{name:slug(c.name)+'-roster.pdf',data:pdfFor([c]),type:'application/pdf'}]});
 }
+const selList=()=>state.crew.filter(c=>ui.sel.has(c.id));
 async function sendAllPdf(){
- const list=shareCrew();if(!list.length){toast('No crew to send.');return}
- const name='individual-rosters'+(ui.shareRank==='ALL'?'':'-'+ui.shareRank.toLowerCase())+'.pdf',data=pdfFor(list);
- if(canShareFiles()){try{await navigator.share({title:'Individual rosters, '+PERIOD,text:'Individual rosters for '+PERIOD+' are attached, one page per person.',files:[new File([data],name,{type:'application/pdf'})]})}catch(e){if(e&&e.name!=='AbortError')offerFile(name,data,'application/pdf')}}
+ const list=selList();if(!list.length){toast('Select at least one crew member first.');return}
+ const name=(list.length===1?slug(list[0].name)+'-roster':'rosters-'+list.length+'-crew')+'.pdf',data=pdfFor(list);
+ if(canShareFiles()){try{await navigator.share({title:'Rosters, '+PERIOD,text:'Rosters for '+PERIOD+' are attached, one page per person.',files:[new File([data],name,{type:'application/pdf'})]})}catch(e){if(e&&e.name!=='AbortError')offerFile(name,data,'application/pdf')}}
  else offerFile(name,data,'application/pdf');
 }
 const fullFiles=()=>[{name:'crew-roster.html',data:printDoc('full',state.crew,'Crew roster'),type:'text/html'},{name:'crew-roster.csv',data:csvAll(),type:'text/csv'}];
 const shareCrew=()=>state.crew.filter(c=>ui.shareRank==='ALL'||c.rank===ui.shareRank);
 function renderShare(){
  if(!ui.shareRank)ui.shareRank='ALL';
- const withMail=state.crew.filter(c=>c.email).length;
- $('#sharecount').textContent=`${withMail} of ${state.crew.length} crew have an email address. Add missing ones with Edit on the Crew tab, or type an address when you write the email.`;
+ const withMail=state.crew.filter(c=>c.email).length,n=selList().length;
+ $('#sharecount').textContent=`${withMail} of ${state.crew.length} crew have an email address. Tick crew to print or send their rosters together, or use the buttons on each row.`;
  const f=(v,t)=>`<button class="chip" data-sharerank="${v}" aria-pressed="${ui.shareRank===v}">${t}</button>`;
  $('#sharefilters').innerHTML=f('ALL','Everyone')+f('CPT','Captains')+f('FO','First officers')+f('CC','Cabin crew');
- $('#printeach').textContent='Print a page for each person ('+shareCrew().length+')';$('#sendallpdf').textContent='Send all '+shareCrew().length+' rosters as one PDF';
- $('#sharelist').innerHTML=shareCrew().map(c=>{const st=stats(c);return `<div class="person"><div><span class="nm">${esc(c.name)}${c.sent?' <span class="meta" style="display:inline;color:var(--ok)">Sent</span>':''}</span><span class="meta">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, ${esc(c.base)}. ${st.duties} duty days, ${dur(st.block*60)} block.</span>${c.email?`<span class="meta">${esc(c.email)}</span>`:'<span class="noemail">No email address</span>'}</div>
-  <div class="actions"><button class="btn small" data-mailc="${c.id}">Email PDF</button><button class="btn ghost small" data-pdfc="${c.id}">Save PDF</button><button class="btn ghost small" data-printc="${c.id}">Print</button><button class="btn ghost small" data-icsc="${c.id}">Calendar file</button></div></div>`}).join('')||'<p class="note">No crew yet.</p>';
+ $('#sendallpdf').textContent='Send selected as one PDF ('+n+')';$('#saveselpdf').textContent='Save selected as PDF ('+n+')';$('#printsel').textContent='Print selected ('+n+')';
+ $('#sharelist').innerHTML=shareCrew().map(c=>{const st=stats(c);return `<div class="person"><label style="flex-direction:row;align-items:flex-start;gap:10px;font-weight:400"><input type="checkbox" data-selc="${c.id}" ${ui.sel.has(c.id)?'checked':''} style="min-height:auto;width:20px;height:20px;margin-top:2px"><span><span class="nm">${esc(c.name)}${c.sent?' <span class="meta" style="display:inline;color:var(--ok)">Sent</span>':''}</span><span class="meta">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, ${esc(c.base)}. ${st.duties} duty days, ${dur(st.block*60)} block.</span>${c.email?`<span class="meta">${esc(c.email)}</span>`:'<span class="noemail">No email address</span>'}</span></label>
+  <div class="actions"><button class="btn small" data-mailc="${c.id}">Email PDF</button><button class="btn ghost small" data-pdfc="${c.id}">Save PDF</button><button class="btn ghost small" data-printc="${c.id}">Print</button><button class="btn ghost small" data-viewc="${c.id}">View</button></div></div>`}).join('')||'<p class="note">No crew yet.</p>';
 }
 
-/* ---------- Events ---------- */
+/* ---------- Import from other systems ---------- */
+const AL={
+ crew:{name:['name','fullname','crewname','crewmember','employee','employeename','staffname'],first:['firstname','givenname','forename'],last:['lastname','surname','familyname'],rank:['position','rank','role','function','seat','crewposition','jobtitle'],type:['aircraft','type','aircrafttype','rating','typerating','fleet','equipment'],base:['base','homebase','station','crewbase'],email:['email','emailaddress','mail','eemail'],lic:['licence','license','licenceexpiry','licenseexpiry','licexpiry','licenceexpires','licenseexpires','licenceexpirydate','licenseexpirydate'],med:['medical','medicalexpiry','medexpiry','medicalexpires','medicalexpirydate','class1medical'],rec:['recurrent','recurrentexpiry','recurrenttraining','recurrenttrainingexpiry','recurrentexpires','opc','lpc','sep','simcheck','trainingexpiry']},
+ flights:{code:['code','flight','flightno','flightnumber','pairing','trip','duty','flightcode'],type:['aircraft','type','aircrafttype','fleet','equipment','actype'],days:['days','daysofoperation','dow','operates','frequency','operatingdays'],day:['tripday','dutyday','daynumber','day'],from:['from','origin','departureairport','orig','fromairport','depairport'],to:['to','destination','dest','arrivalairport','toairport','arrairport'],dep:['departs','departure','deptime','departuretime','std','etd','off'],arr:['arrives','arrival','arrtime','arrivaltime','sta','eta','on']},
+ acts:{name:['name','fullname','crewname','crewmember','employee','staffname'],date:['date','startdate','fromdate','day'],until:['until','todate','enddate','dateto','lastday','enddate'],type:['type','activity','code','duty','reason','category'],start:['start','starttime','begins','report','reporttime'],end:['end','endtime','finish','release','releasetime'],note:['note','notes','comment','comments','details','description']}
+};
+const IMP={
+ crew:{fmt:'Columns: name, position (Captain, First officer or Cabin crew), aircraft (cabin crew can use All), base, email, licence_expiry, medical_expiry, recurrent_expiry. Dates like 2027-03-31 or 31/03/2027. Crew are matched by name.',
+  tpl:'name,position,aircraft,base,email,licence_expiry,medical_expiry,recurrent_expiry\nTiwonge Banda,Captain,Q400,LLW,tiwonge.banda@example.com,2027-03-31,2027-01-15,2026-12-01\nGrace Phiri,Cabin crew,All,BLZ,grace.phiri@example.com,31/05/2027,28/02/2027,30/04/2027\n'},
+ flights:{fmt:'One row per leg. Columns: code, aircraft, days (Daily, Mon Wed Fri, Mon-Fri or 135), trip_day (1, or 2 for the day after a night stop), from, to, departs, arrives. Flights are matched by code.',
+  tpl:'code,aircraft,days,trip_day,from,to,departs,arrives\nLZ1,Q400,Mon Wed Fri,1,LLW,MZU,07:00,07:55\nLZ1,Q400,Mon Wed Fri,1,MZU,LLW,08:35,09:30\nLA2,B737,Sat,1,LLW,ADD,15:00,19:10\nLA2,B737,Sat,2,ADD,LLW,10:00,14:10\n'},
+ acts:{fmt:'Columns: name, date, until (optional, for several days), type (leave, sim or standby), start, end, note. Only dates in this roster period are used.',
+  tpl:'name,date,until,type,start,end,note\nTiwonge Banda,2026-10-06,2026-10-08,leave,,,\nTiwonge Banda,2026-10-12,,sim,08:00,16:00,OPC JNB simulator\nGrace Phiri,2026-10-14,,standby,05:00,17:00,Airport standby\n'}
+};
+function parseCSV(t){
+ t=String(t).replace(/^\ufeff/,'');const first=t.split(/\r?\n/)[0]||'';
+ const dl=[',',';','\t'].map(d=>[d,first.split(d).length]).sort((a,b)=>b[1]-a[1])[0][0];
+ const rows=[];let row=[],f='',q=false;
+ for(let i=0;i<t.length;i++){const ch=t[i];
+  if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch;continue}
+  if(ch==='"'){q=true;continue}
+  if(ch===dl){row.push(f);f='';continue}
+  if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x.trim()!==''))rows.push(row);row=[];continue}
+  f+=ch;
+ }
+ row.push(f);if(row.some(x=>x.trim()!==''))rows.push(row);
+ return rows.map(r=>r.map(x=>x.trim()));
+}
+const normH=h=>h.toLowerCase().replace(/[^a-z0-9]/g,'');
+function mapHeaders(hdr,al){const ix={};hdr.forEach((h,i)=>{const n=normH(h);for(const k in al)if(ix[k]===undefined&&al[k].includes(n)){ix[k]=i;break}});return ix}
+const MON=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function parseDate(v){
+ v=String(v||'').trim();if(!v)return '';let m;
+ const ok=(y,mo,d)=>{const t=new Date(y,mo-1,d);return t.getFullYear()===y&&t.getMonth()===mo-1&&t.getDate()===d?y+'-'+pad2(mo)+'-'+pad2(d):null};
+ if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v)))return ok(+m[1],+m[2],+m[3]);
+ if((m=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/.exec(v))){let y=+m[3];if(y<100)y+=2000;return ok(y,+m[2],+m[1])}
+ if((m=/^(\d{1,2})[\s-]+([a-z]{3})[a-z]*\.?[\s-]+(\d{2,4})$/i.exec(v))){const mo=MON.indexOf(m[2].toLowerCase())+1;let y=+m[3];if(y<100)y+=2000;return mo?ok(y,mo,+m[1]):null}
+ if(/^\d{5}$/.test(v)){const t=new Date(Date.UTC(1899,11,30)+(+v)*864e5);return ok(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate())}
+ return null;
+}
+function parseTime(v){v=String(v||'').trim();const m=/^(\d{1,2})[:.h]?(\d{2})(?::\d{2})?$/.exec(v);if(!m||+m[1]>23||+m[2]>59)return null;return pad2(+m[1])+':'+m[2]}
+function parseDays(v){
+ v=String(v||'').trim().toLowerCase();if(!v||/daily|every|^all$|^d$/.test(v))return [0,1,2,3,4,5,6];
+ if(/^[1-7]+$/.test(v))return [...new Set(v.split('').map(x=>+x-1))];
+ const out=new Set(),idx=w=>['mon','tue','wed','thu','fri','sat','sun'].indexOf(w.slice(0,3));
+ for(const tok of v.split(/[\s,;\/]+/).filter(Boolean)){
+  const r=tok.split('-');
+  if(r.length===2&&idx(r[0])>=0&&idx(r[1])>=0){let a=idx(r[0]);const b=idx(r[1]);for(let k=0;k<7;k++){out.add(a);if(a===b)break;a=(a+1)%7}continue}
+  if(/^[1-7]$/.test(tok)){out.add(+tok-1);continue}
+  const i=idx(tok);if(i<0)return null;out.add(i);
+ }
+ return [...out];
+}
+function parseRank(v){v=String(v||'').toLowerCase();if(/first|f\/o|^fo$|co-?pilot|^sic$|second officer|^so$/.test(v))return 'FO';if(/capt|^cpt$|^cmd|commander|^pic$/.test(v))return 'CPT';if(/cabin|^cc$|^fa$|attendant|purser|^scc$|steward|host/.test(v))return 'CC';return null}
+function parseAct(v){v=String(v||'').toLowerCase().trim();if(/leave|annual|^al$|vacation|holiday|sick|^lv$/.test(v))return 'leave';if(/sim|train|recurrent|opc|lpc|^sep|course|ground|crm|check/.test(v))return 'sim';if(/stand|^sby$|^sb$|reserve|^res$|stby/.test(v))return 'sb';if(/^off$|clear|^do$|day off/.test(v))return 'off';return null}
+function prepCrew(rows,mode){
+ const [hdr,...data]=rows,ix=mapHeaders(hdr,AL.crew),errs=[],items=[],newTypes=new Set();
+ if(ix.name===undefined&&(ix.first===undefined||ix.last===undefined))return {fatal:'No name column found. The first row must hold column headings such as name, position, aircraft, base.'};
+ if(ix.rank===undefined)return {fatal:'No position column found (for example position or rank).'};
+ data.forEach((r,n)=>{const row=n+2,g=k=>ix[k]!==undefined?(r[ix[k]]||'').trim():'';
+  const name=g('name')||[g('first'),g('last')].filter(Boolean).join(' ');if(!name){errs.push(`Row ${row}: no name, skipped`);return}
+  const rank=parseRank(g('rank'));if(!rank){errs.push(`Row ${row} (${name}): position "${g('rank')}" not recognised, skipped`);return}
+  let type=g('type').toUpperCase().replace(/\s+/g,' ');if(rank==='CC'&&(!type||/^(ALL|BOTH|ANY|ALL TYPES)$/.test(type)))type='ALL';
+  if(!type){errs.push(`Row ${row} (${name}): no aircraft rating, skipped`);return}
+  if(type!=='ALL'&&!fleetOf(type))newTypes.add(type);
+  const base=g('base').toUpperCase();if(!/^[A-Z]{3,4}$/.test(base)){errs.push(`Row ${row} (${name}): base "${g('base')}" should be a 3 or 4 letter code, skipped`);return}
+  const it={name,rank,type,base,email:g('email')};
+  for(const k of ['lic','med','rec']){const v=g(k),d=parseDate(v);if(d===null){errs.push(`Row ${row} (${name}): date "${v}" not recognised, left blank`);it[k]=''}else it[k]=d}
+  items.push(it);
+ });
+ const existing=nm=>state.crew.find(c=>c.name.toLowerCase()===nm.toLowerCase());
+ const upd=mode==='merge'?items.filter(i=>existing(i.name)).length:0;
+ return {items,errs,summary:`${items.length} crew ready to import: ${items.length-upd} new${mode==='merge'?', '+upd+' updated':''}.`+(newTypes.size?` New aircraft types will be added to the fleet with 2 cabin crew each (${[...newTypes].join(', ')}). Check them on the Aircraft tab.`:'')+(mode==='replace'?' Your current crew list, leave and manual changes will be replaced.':''),
+  apply(){[...newTypes].forEach(t=>state.fleet.push({code:t,cc:2}));
+   if(mode==='replace'){state.crew=items.map(i=>({id:uid(),acts:{},...i}));state.locks={};state.excl={};ui.sel.clear()}
+   else items.forEach(i=>{const c=existing(i.name);if(c){for(const k in i)if(i[k]!=='')c[k]=i[k]}else state.crew.push({id:uid(),acts:{},...i})});
+   return items.length+' crew imported'}};
+}
+function prepFlights(rows,mode){
+ const [hdr,...data]=rows,ix=mapHeaders(hdr,AL.flights),errs=[];
+ const need={code:'flight code',from:'departure airport (from)',to:'arrival airport (to)',dep:'departure time',arr:'arrival time'};
+ for(const k in need)if(ix[k]===undefined)return {fatal:'No column found for the '+need[k]+'.'};
+ const byCode=new Map();
+ data.forEach((r,n)=>{const row=n+2,g=k=>ix[k]!==undefined?(r[ix[k]]||'').trim():'';
+  const code=g('code').toUpperCase();if(!code){errs.push(`Row ${row}: no flight code, skipped`);return}
+  const dep=parseTime(g('dep')),arr=parseTime(g('arr'));if(!dep||!arr){errs.push(`Row ${row} (${code}): times must look like 06:45, skipped`);return}
+  let f=byCode.get(code);if(!f){f={code,type:g('type').toUpperCase().replace(/\s+/g,' '),dow:parseDays(g('days')),duties:[]};byCode.set(code,f)}
+  if(!f.type&&g('type'))f.type=g('type').toUpperCase();
+  const td=Math.max(1,Math.min(MAXTRIP,parseInt(g('day'),10)||1))-1;while(f.duties.length<=td)f.duties.push([]);
+  f.duties[td].push(L(g('from').toUpperCase(),g('to').toUpperCase(),dep,arr));
+ });
+ const items=[],newTypes=new Set();
+ for(const f of byCode.values()){
+  f.duties=f.duties.filter(x=>x.length);
+  if(!f.type){errs.push(`${f.code}: no aircraft type, skipped`);continue}
+  if(!fleetOf(f.type))newTypes.add(f.type);
+  if(f.dow===null){errs.push(`${f.code}: days not recognised, set to daily`);f.dow=[0,1,2,3,4,5,6]}
+  const old=state.patterns.find(p=>p.code.toUpperCase()===f.code);
+  items.push({id:old&&mode==='merge'?old.id:uid(),code:f.code,type:f.type,dow:f.dow,duties:f.duties});
+ }
+ const tmp=[...newTypes].map(t=>({code:t,cc:2})),saved=state.patterns;state.fleet.push(...tmp);if(mode==='replace')state.patterns=[];
+ items.forEach(p=>{const v=validate(p,p.id);if(v.e.length)errs.push(`${p.code}: imported, but needs fixing on the Flights tab (${v.e[0]})`)});
+ state.patterns=saved;state.fleet.splice(state.fleet.length-tmp.length,tmp.length);
+ const upd=mode==='merge'?items.filter(p=>state.patterns.some(o=>o.id===p.id)).length:0;
+ return {items,errs,summary:`${items.length} flights ready to import: ${items.length-upd} new${mode==='merge'?', '+upd+' updated':''}.`+(newTypes.size?` New aircraft types will be added with 2 cabin crew each (${[...newTypes].join(', ')}).`:'')+(mode==='replace'?' Your current flights and manual changes will be replaced.':''),
+  apply(){[...newTypes].forEach(t=>state.fleet.push({code:t,cc:2}));
+   if(mode==='replace'){state.patterns=items;state.locks={};state.excl={}}
+   else items.forEach(p=>{const i=state.patterns.findIndex(o=>o.id===p.id);if(i>=0)state.patterns[i]=p;else state.patterns.push(p)});
+   return items.length+' flights imported'}};
+}
+function prepActs(rows,mode){
+ const [hdr,...data]=rows,ix=mapHeaders(hdr,AL.acts),errs=[],items=[];let outside=0;
+ if(ix.name===undefined||ix.date===undefined||ix.type===undefined)return {fatal:'The data needs name, date and type columns.'};
+ data.forEach((r,n)=>{const row=n+2,g=k=>ix[k]!==undefined?(r[ix[k]]||'').trim():'';
+  const c=state.crew.find(x=>x.name.toLowerCase()===g('name').toLowerCase());if(!c){errs.push(`Row ${row}: "${g('name')}" is not in the crew list, skipped`);return}
+  const type=parseAct(g('type'));if(!type){errs.push(`Row ${row} (${c.name}): type "${g('type')}" not recognised, skipped`);return}
+  const d1=parseDate(g('date')),d2=g('until')?parseDate(g('until')):d1;if(!d1||!d2){errs.push(`Row ${row} (${c.name}): date not recognised, skipped`);return}
+  let a={type};if(type==='sim'||type==='sb'){const st=g('start')?parseTime(g('start')):ACT[type].start,en=g('end')?parseTime(g('end')):ACT[type].end;if(!st||!en){errs.push(`Row ${row} (${c.name}): times must look like 08:00, skipped`);return}a={type,start:st,end:en,note:g('note')}}
+  const a1=dayOfDate(d1),a2=dayOfDate(d2);
+  for(let d=a1;d<=a2&&d-a1<366;d++){if(d<0||d>=DAYS){outside++;continue}items.push({c,d,a})}
+ });
+ const cnt=t=>items.filter(i=>i.a.type===t).length;
+ return {items,errs,summary:`${items.length} days ready to import: ${cnt('leave')} leave, ${cnt('sim')} simulator, ${cnt('sb')} standby${cnt('off')?', '+cnt('off')+' cleared':''}.`+(outside?` ${outside} days fall outside this roster (${PERIOD}) and will be ignored.`:'')+(mode==='replace'?' All current leave, simulator and standby days will be replaced.':''),
+  apply(){if(mode==='replace')state.crew.forEach(c=>c.acts={});items.forEach(({c,d,a})=>{if(a.type==='off')delete c.acts[d];else c.acts[d]={...a}});return items.length+' days imported'}};
+}
+let impPending=null;
+function renderImpFormat(){const t=IMP[$('#imptype').value]?$('#imptype').value:'crew';$('#impformat').textContent=IMP[t].fmt;$('#imptext').placeholder=IMP[t].tpl.split('\n')[0];$('#imppreview').hidden=true;$('#impgo').hidden=true;impPending=null}
+function checkImport(){
+ const text=$('#imptext').value.trim();if(!text){toast('Choose a file or paste the data first.');return}
+ const rows=parseCSV(text),type=$('#imptype').value,mode=$('#impmode').value;
+ const res=rows.length<2?{fatal:'The data needs a heading row and at least one row of data.'}:(type==='crew'?prepCrew:type==='flights'?prepFlights:prepActs)(rows,mode);
+ const pv=$('#imppreview');pv.hidden=false;
+ if(res.fatal){pv.innerHTML=`<span class="docbad">${esc(res.fatal)}</span>`;$('#impgo').hidden=true;impPending=null;return}
+ pv.innerHTML=`<b>${esc(res.summary)}</b>`+(res.errs.length?`<ul class="errs" style="margin:8px 0 0">${res.errs.slice(0,15).map(x=>`<li>${esc(x)}</li>`).join('')}${res.errs.length>15?`<li>and ${res.errs.length-15} more</li>`:''}</ul>`:'<div class="reason">No problems found.</div>');
+ impPending=res.items.length?res:null;$('#impgo').hidden=!impPending;
+}
+function runImport(){
+ if(!impPending)return;const res=impPending,go=()=>{const msg=res.apply();impPending=null;$('#impgo').hidden=true;$('#imppreview').innerHTML=esc(msg)+'. Roster rebuilt.';commit(msg+'. Roster rebuilt.')};
+ if($('#impmode').value==='replace')askConfirm('Replace existing data?',res.summary,'Import and replace',go);else go();
+}
+function restoreBackup(text){
+ let obj;try{obj=JSON.parse(text)}catch(e){toast('That file is not a valid backup.');return}
+ if(!obj||!Array.isArray(obj.crew)||!Array.isArray(obj.patterns)||!Array.isArray(obj.fleet)){toast('That file is not a crew roster backup.');return}
+ askConfirm('Restore this backup?',`It has ${obj.crew.length} crew, ${obj.patterns.length} flights and ${obj.fleet.length} aircraft types. It replaces everything in the app now.`,'Restore backup',()=>{state=migrate(obj);ui.sel.clear();commit('Backup restored. Roster rebuilt.')});
+}
+
+/* ---------- Events/* ---------- Events ---------- */
 document.addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
- if(ds.tab){ui.tab=ds.tab;document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));['roster','share','flights','fleet','crew','rules'].forEach(k=>$('#tab-'+k).hidden=k!==ui.tab);return}
+ if(ds.tab){ui.tab=ds.tab;document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));['roster','share','flights','fleet','crew','rules','data'].forEach(k=>$('#tab-'+k).hidden=k!==ui.tab);return}
  if(b.id==='confirmyes'){const fn=pending;pending=null;dlg.close();if(fn)fn();return}
  if(ds.close!==undefined){dlg.close();return}
  if(ds.seat){openSeat(R.seats[+ds.seat]);return}
@@ -874,7 +1199,7 @@ document.addEventListener('click',e=>{
  if(ds.printc){doPrint('each',[state.crew.find(c=>c.id===ds.printc)]);return}
  if(ds.icsc){const c=state.crew.find(x=>x.id===ds.icsc);offerFile(slug(c.name)+'-roster.ics',icsFor(c),'text/calendar');return}
  if(b.id==='printfull'){doPrint('full',state.crew);return}
- if(b.id==='printeach'){doPrint('each',shareCrew());return}
+ if(b.id==='printeach'){doPrint('each',state.crew);return}
  if(b.id==='dlhtml'){offerFile('crew-roster.html',printDoc('full',state.crew,'Crew roster'),'text/html');return}
  if(b.id==='dlcsv'){offerFile('crew-roster.csv',csvAll(),'text/csv');return}
  if(b.id==='emailfull'){openCompose({title:'Email the full roster',to:$('#fullto').value.trim(),subject:'Crew roster, '+PERIOD,body:fullText(),files:fullFiles()});return}
@@ -887,11 +1212,26 @@ document.addEventListener('click',e=>{
  if(ds.pdfc){const c=state.crew.find(x=>x.id===ds.pdfc);offerFile(slug(c.name)+'-roster.pdf',pdfFor([c]),'application/pdf');return}
  if(b.id==='sendallpdf'){sendAllPdf();return}
  if(b.id==='mcopy'){copyCompose();return}
- if(ds.leave){
-  const[id,d]=ds.leave.split('|'),c=state.crew.find(x=>x.id===id),day=+d,k=c.leave.indexOf(day);
-  if(k>=0)c.leave.splice(k,1);else c.leave.push(day);
-  commit((k>=0?'Leave removed for ':'Leave added for ')+c.name+' on '+dayLabel(day)+'. Roster rebuilt.');return;
- }
+ if(ds.day){const[id,d]=ds.day.split('|');openDay(state.crew.find(x=>x.id===id),+d);return}
+ if(ds.acttype&&ui.dayDraft){ui.dayDraft.type=ds.acttype;document.querySelectorAll('[data-acttype]').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#acttimes').hidden=!(ds.acttype==='sim'||ds.acttype==='sb');
+  if(ds.acttype==='sim'||ds.acttype==='sb'){const a=actOf(ui.dayDraft.c,ui.dayDraft.d);if(!a||a.type!==ds.acttype){$('#actstart').value=ACT[ds.acttype].start;$('#actend').value=ACT[ds.acttype].end}}return}
+ if(b.id==='actsave'){saveDay();return}
+ if(ds.putflight&&ui.dayDraft){const inst=R.insts.find(i=>i.id===ds.putflight),c=ui.dayDraft.c;inst.days.forEach(d=>{if(actOf(c,d)&&actOf(c,d).type==='sb')delete c.acts[d]});
+  lockCrew(inst,c.rank,c,null);dlg.close();commit(c.name+' put on '+inst.code+', '+dayLabel(inst.day)+'.');const f=R.seats.find(s=>s.inst.id===inst.id&&s.crew===c);if(f&&f.flag)toast(c.name+' put on '+inst.code+'. Flagged: '+f.flag);return}
+ if(ds.swapseat){const s=R.seats[+ds.swapseat],c=state.crew.find(x=>x.id===$('#swapsel').value);if(!c)return;const iid=s.inst.id;
+  s.inst.days.forEach(d=>{if(actOf(c,d)&&actOf(c,d).type==='sb')delete c.acts[d]});
+  lockCrew(s.inst,s.rank,c,s.crew);dlg.close();commit(c.name+' now on '+s.inst.code+', '+dayLabel(s.inst.day)+'.');const f=R.seats.find(x=>x.inst.id===iid&&x.crew===c);if(f&&f.flag)toast(c.name+' assigned. Flagged: '+f.flag);return}
+ if(ds.unseat){const s=R.seats[+ds.unseat],c=s.crew,key=s.inst.id+'|'+s.rank;state.locks[key]=(state.locks[key]||[]).filter(id=>id!==c.id);const ex=state.excl[s.inst.id]||[];if(!ex.includes(c.id))ex.push(c.id);state.excl[s.inst.id]=ex;dlg.close();commit(c.name+' taken off '+s.inst.code+'. The planner has refilled the seat if it could.');return}
+ if(ds.autoinst){Object.keys(state.locks).forEach(k=>{if(k.startsWith(ds.autoinst+'|'))delete state.locks[k]});delete state.excl[ds.autoinst];dlg.close();commit('Manual changes undone. The planner chose the crew again.');return}
+ if(ds.viewc){ui.view='person';ui.person=ds.viewc;document.querySelector('[data-tab="roster"]').click();renderFilters();renderGrid();return}
+ if(b.id==='selall'){shareCrew().forEach(c=>ui.sel.add(c.id));renderShare();return}
+ if(b.id==='selnone'){ui.sel.clear();renderShare();return}
+ if(b.id==='saveselpdf'){const l=selList();if(!l.length){toast('Select at least one crew member first.');return}offerFile((l.length===1?slug(l[0].name)+'-roster':'rosters-'+l.length+'-crew')+'.pdf',pdfFor(l),'application/pdf');return}
+ if(b.id==='printsel'){const l=selList();if(!l.length){toast('Select at least one crew member first.');return}doPrint('each',l);return}
+ if(b.id==='impcheck'){checkImport();return}
+ if(b.id==='impgo'){runImport();return}
+ if(b.id==='imptpl'){const t=$('#imptype').value;offerFile(t+'-import-template.csv',IMP[t].tpl,'text/csv');return}
+ if(b.id==='backupsave'){offerFile('crew-roster-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(state,null,1),'application/json');return}
  if(b.id==='addflight'){const base=bases()[0]||'LLW';openFlightEditor({id:uid(),code:'',type:state.fleet[0]?.code,dow:[0,1,2,3,4,5,6],duties:[[L(base,'','08:00','09:00')]]},true);return}
  if(ds.editp){openFlightEditor(state.patterns.find(p=>p.id===ds.editp),false);return}
  if(ds.copyp){const p=clone(state.patterns.find(x=>x.id===ds.copyp));p.id=uid();p.code=p.code+'B';openFlightEditor(p,true);return}
@@ -928,7 +1268,7 @@ document.addEventListener('click',e=>{
  if(b.id==='reset'){askConfirm('Reset to sample data?','This replaces all your aircraft, flights, crew and rules.','Reset everything',()=>{state=freshState();commit('Sample data restored.')})}
 });
 dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
-dlg.addEventListener('close',()=>{draft=null;pending=null;compose=null});
+dlg.addEventListener('close',()=>{draft=null;pending=null;compose=null;ui.dayDraft=null});
 document.addEventListener('input',e=>{
  const t=e.target;if(!draft)return;
  if(t.dataset.leg!==undefined){let v=t.value;const k=+t.dataset.dd,i=+t.dataset.leg,key=t.dataset.k,legs=draft.duties[k];
@@ -943,6 +1283,11 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
  const t=e.target;
+ if(t.id==='personsel'){ui.person=t.value;renderGrid();return}
+ if(t.dataset.selc){t.checked?ui.sel.add(t.dataset.selc):ui.sel.delete(t.dataset.selc);renderShare();return}
+ if(t.id==='imptype'||t.id==='impmode'){renderImpFormat();return}
+ if(t.id==='impfile'&&t.files[0]){const f=t.files[0];f.text().then(x=>{$('#imptext').value=x;toast('Loaded '+f.name);checkImport()}).catch(()=>toast('Could not read that file.'));t.value='';return}
+ if(t.id==='backupfile'&&t.files[0]){t.files[0].text().then(restoreBackup).catch(()=>toast('Could not read that file.'));t.value='';return}
  if(t.dataset.rule){const k=t.dataset.rule,v=Math.round(+t.value);
   if(!Number.isFinite(v)||v<+t.min||v>+t.max){t.value=state.rules[k];toast('Enter a value from '+t.min+' to '+t.max+'.');return}
   state.rules[k]=v;save();R=solve();renderSummary();renderGrid();renderPatterns();renderCrew();toast('Rule updated. Roster rebuilt.');return}
@@ -962,8 +1307,8 @@ document.addEventListener('submit',e=>{
  if(f.id==='addcrew'||f.id==='cform'){
   const r=readCrewForm(f);
   if(r.err.length){if(f.id==='cform')$('#cerr').innerHTML=r.err.map(x=>`<li>${esc(x)}</li>`).join('');else toast(r.err[0]);return}
-  if(f.id==='addcrew'){state.crew.push({id:uid(),name:r.name,email:r.email,rank:r.rank,type:r.type,base:r.base,leave:[]});commit(r.name+' added. Roster rebuilt.')}
-  else{const c=state.crew.find(x=>x.id===f.dataset.id);Object.assign(c,{name:r.name,email:r.email,rank:r.rank,type:r.type,base:r.base});dlg.close();commit(r.name+' updated. Roster rebuilt.')}
+  if(f.id==='addcrew'){state.crew.push({id:uid(),name:r.name,email:r.email,lic:r.lic,med:r.med,rec:r.rec,rank:r.rank,type:r.type,base:r.base,acts:{}});commit(r.name+' added. Roster rebuilt.')}
+  else{const c=state.crew.find(x=>x.id===f.dataset.id);Object.assign(c,{name:r.name,email:r.email,lic:r.lic,med:r.med,rec:r.rec,rank:r.rank,type:r.type,base:r.base});dlg.close();commit(r.name+' updated. Roster rebuilt.')}
   return;
  }
  if(f.id==='addfleet'){
@@ -974,6 +1319,7 @@ document.addEventListener('submit',e=>{
   state.fleet.push({code,cc});f.reset();commit(code+' added. You can now pick it for flights and crew ratings.');
  }
 });
+renderImpFormat();
 rebuild();
 </script>
 
