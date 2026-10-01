@@ -304,6 +304,10 @@ const ts=v=>validTime(v)?hhmm(toMin(v)-tzOff()):(v||'');
 const toStore=v=>validTime(v)?hhmm(toMin(v)+tzOff()):v;
 const tzName=()=>state.tz.gmt?'GMT':'local time (GMT+'+state.tz.offset/60+')';
 const timesNote=()=>state.tz.gmt?'Times are GMT.':'Times are local (GMT+'+state.tz.offset/60+').';
+const rng=()=>state.range==='h1'?[0,Math.min(13,DAYS-1)]:state.range==='h2'?[14,DAYS-1]:[0,DAYS-1];
+const RD=()=>{const [a,b]=rng(),o=[];for(let d=a;d<=b;d++)o.push(d);return o};
+const inR=d=>{const [a,b]=rng();return d>=a&&d<=b};
+const rangeText=()=>{if(!state.range||state.range==='month')return PERIOD;const [a,b]=rng(),[y,m]=state.month.split('-').map(Number);return (a+1)+' to '+(b+1)+' '+MONTHS[m-1]+' '+y};
 const monthKey=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
 const longDay=d=>dayDate(d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
 const validTime=t=>/^\d{2}:\d{2}$/.test(t||'');
@@ -603,6 +607,7 @@ function renderMonthBar(){
  if(!opts.some(o=>o.includes('"'+state.month+'"'))){const [y,m]=state.month.split('-');opts.unshift(`<option value="${state.month}" selected>${MONTHS[m-1]} ${y}</option>`)}
  const off=state.tz.offset/60;
  $('#monthbar').innerHTML=`<div class="grp"><button class="btn ghost small" data-month="-1" aria-label="Previous month">‹</button><select id="monthsel" aria-label="Roster month">${opts.join('')}</select><button class="btn ghost small" data-month="1" aria-label="Next month">›</button></div>
+  <div class="grp" role="group" aria-label="Days shown">${[['month','Whole month'],['h1','1–14 '+MONTHS[+state.month.split('-')[1]-1].slice(0,3)],['h2','15–'+DAYS+' '+MONTHS[+state.month.split('-')[1]-1].slice(0,3)]].map(([v,l])=>`<button class="chip" data-range="${v}" aria-pressed="${(state.range||'month')===v}">${l}</button>`).join('')}</div>
   <div class="grp" role="group" aria-label="Time zone"><button class="chip" data-tz="gmt" aria-pressed="${state.tz.gmt}">GMT</button><button class="chip" data-tz="local" aria-pressed="${!state.tz.gmt}">Local (GMT${off>=0?'+':''}${off})</button></div>`;
 }
 function goMonth(key){state.month=key;setPeriod(key);save();rebuild();const [y,m]=key.split('-');toast('Showing '+MONTHS[m-1]+' '+y+'.')}
@@ -659,7 +664,7 @@ function renderPerson(){
  const st=stats(c),docs=docStatus(c).map(d=>`<span class="${d.st==='expired'||d.st==='period'?'docbad':d.st==='soon'?'docwarn':''}">${d.l}: ${d.v?fmtDate(d.v):'not set'}</span>`).join('. ');
  let h=`<div class="panel"><div class="panelhead"><div><h2>${esc(c.name)}</h2><span class="meta">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, based ${esc(c.base)}. ${st.duties} duty days, ${dur(st.block*60)} block, ${st.off} days off.</span><span class="meta">${docs}</span></div>
   <div class="actions"><button class="btn small" data-mailc="${c.id}">Email PDF</button><button class="btn ghost small" data-pdfc="${c.id}">Save PDF</button><button class="btn ghost small" data-printc="${c.id}">Print</button><button class="btn ghost small" data-editc="${c.id}">Edit details</button></div></div>`;
- for(let d=0;d<DAYS;d++){const m=map.get(d);h+=`<div class="pday"><span class="pd">${shortDate(d)}</span>${m?stripHTML(m[0],m[1]):actCell(c,d).replace('class="cell"','class="cell" style="border-color:var(--line);text-align:left;padding-left:8px"').replace('></button>','>Day off</button>')}</div>`}
+ for(const d of RD()){const m=map.get(d);h+=`<div class="pday"><span class="pd">${shortDate(d)}</span>${m?stripHTML(m[0],m[1]):actCell(c,d).replace('class="cell"','class="cell" style="border-color:var(--line);text-align:left;padding-left:8px"').replace('></button>','>Day off</button>')}</div>`}
  $('#personview').innerHTML=h+'</div>';
 }
 function renderGrid(){
@@ -668,11 +673,11 @@ function renderGrid(){
  const map=new Map();R.seats.forEach(s=>{if(s.crew)s.inst.days.forEach((d,k)=>map.set(s.crew.id+'|'+d,[s,k]))});
  const crew=state.crew.filter(c=>(ui.rank==='ALL'||c.rank===ui.rank)&&(ui.base==='ALL'||c.base===ui.base));
  let h='<thead><tr><th class="who">Crew</th>';
- for(let d=0;d<DAYS;d++)h+=`<th class="${wd(d)>4?'we':''}">${dayLabel(d)}</th>`;
+ for(const d of RD())h+=`<th class="${wd(d)>4?'we':''}">${dayLabel(d)}</th>`;
  h+='<th>Block</th></tr></thead><tbody>';
  for(const c of crew){
   h+=`<tr><th class="who" scope="row"><span class="nm">${esc(c.name)}</span><span class="meta">${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</span>${docMeta(c)}</th>`;
-  for(let d=0;d<DAYS;d++){
+  for(const d of RD()){
    const m=map.get(c.id+'|'+d);
    if(m)h+=`<td>${stripHTML(m[0],m[1])}</td>`;
    else h+=`<td>${actCell(c,d)}</td>`;
@@ -746,7 +751,7 @@ function renderDatalists(){
  $('#bases').innerHTML=bases().map(b=>`<option value="${esc(b)}">`).join('');
 }
 function render(){
- $('#period').textContent='Roster for '+PERIOD+'. All times '+(state.tz.gmt?'GMT':'local (GMT+'+state.tz.offset/60+')')+'. The planner assigns every seat within your duty limits, evens out hours, and explains each choice.';renderMonthBar();
+ $('#period').textContent='Roster for '+PERIOD+(state.range&&state.range!=='month'?', showing '+rangeText():'')+'. All times '+(state.tz.gmt?'GMT':'local (GMT+'+state.tz.offset/60+')')+'. The planner assigns every seat within your duty limits, evens out hours, and explains each choice.';renderMonthBar();
  renderDatalists();renderSummary();renderFilters();renderGrid();renderPatterns();renderFleet();renderCrew();renderRules();renderShare();
 }
 
@@ -918,12 +923,13 @@ const legDur=l=>validTime(l.dep)&&validTime(l.arr)?((toMin(l.arr)-toMin(l.dep))+
 const shortDate=d=>dayDate(d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const legLines=x=>x.legs.map(l=>l.from+' '+ts(l.dep)+' → '+l.to+' '+ts(l.arr));
-function crewDays(c){
+function crewDays(c,ranged){
  const out=Array.from({length:DAYS},(_,d)=>{const a=actOf(c,d);if(R&&R.autoSb.get(c.id+'|'+d))return {t:'sb',a:{type:'sb',start:ACT.sb.start,end:ACT.sb.end,note:'Planned standby'},auto:true};return a&&a.type!=='off'?{t:a.type,a}:{t:'off'}});
  for(const inst of flightsOf(c))inst.days.forEach((d,k)=>{if(d<DAYS){const x=inst.d.days[k],b=inst.day*1440;out[d]={t:'duty',inst,k,x,rep:b+x.rep,rel:b+x.rel,ns:k<inst.days.length-1?x.end:null}}});
+ if(ranged){const [a,b]=rng();for(let d=0;d<DAYS;d++)if(d<a||d>b)delete out[d]}
  return out;
 }
-function stats(c){const days=crewDays(c),n=t=>days.filter(x=>x.t===t).length;return {duties:n('duty'),leave:n('leave'),sim:n('sim'),sb:n('sb'),off:n('off'),block:flightsOf(c).reduce((t,a)=>t+a.block,0)}}
+function stats(c){const days=crewDays(c,true),n=t=>days.filter(x=>x.t===t).length;return {duties:n('duty'),leave:n('leave'),sim:n('sim'),sb:n('sb'),off:n('off'),block:flightsOf(c).filter(a=>inR(a.day)).reduce((t,a)=>t+a.block,0)}}
 const actText=x=>x.t==='leave'?'Leave':x.t==='sim'?'Simulator training '+ts(x.a.start)+'–'+ts(x.a.end)+(x.a.note?', '+x.a.note:''):x.t==='sb'?'Standby '+ts(x.a.start)+'–'+ts(x.a.end)+(x.a.note?', '+x.a.note:''):'Day off';
 const totalsText=st=>`Duty days ${st.duties}. Block time ${dur(st.block*60)}. Simulator ${st.sim}. Standby ${st.sb}. Days off ${st.off}. Leave ${st.leave}.`;
 const PRINT_CSS=`.pr{font:11px/1.35 -apple-system,system-ui,"Segoe UI",Roboto,Arial,sans-serif;color:#000;background:#fff}
@@ -935,21 +941,21 @@ const PRINT_CSS=`.pr{font:11px/1.35 -apple-system,system-ui,"Segoe UI",Roboto,Ar
 function printBody(kind,list){
  const stamp=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
  if(kind==='full'){
-  let h=`<img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${AIRLINE} crew roster</h1><p class="sub">${esc(PERIOD)}. Printed ${stamp}. ${timesNote()}</p><table><thead><tr><th>Crew</th>`;
-  for(let d=0;d<DAYS;d++)h+=`<th>${dayLabel(d)}</th>`;
+  let h=`<img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${AIRLINE} crew roster</h1><p class="sub">${esc(rangeText())}. Printed ${stamp}. ${timesNote()}</p><table><thead><tr><th>Crew</th>`;
+  for(const d of RD())h+=`<th>${dayLabel(d)}</th>`;
   h+='<th>Block</th></tr></thead><tbody>';
   for(const c of list){
    h+=`<tr><td><b>${esc(c.name)}</b><br>${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</td>`;
-   crewDays(c).forEach(x=>{h+=x.t==='duty'?`<td><b>${esc(x.inst.code)}</b><br>${tt(x.rep)}–${tt(x.rel)}${x.ns?`<br><span class="ns">NS ${esc(x.ns)}</span>`:''}</td>`:x.t==='off'?'<td></td>':x.t==='leave'?'<td class="lv">Leave</td>':`<td class="lv">${ACT[x.t].short}<br>${ts(x.a.start)}–${ts(x.a.end)}</td>`});
+   crewDays(c,true).forEach(x=>{h+=x.t==='duty'?`<td><b>${esc(x.inst.code)}</b><br>${tt(x.rep)}–${tt(x.rel)}${x.ns?`<br><span class="ns">NS ${esc(x.ns)}</span>`:''}</td>`:x.t==='off'?'<td></td>':x.t==='leave'?'<td class="lv">Leave</td>':`<td class="lv">${ACT[x.t].short}<br>${ts(x.a.start)}–${ts(x.a.end)}</td>`});
    h+=`<td>${hrs(stats(c).block)}</td></tr>`;
   }
   return h+'</tbody></table>';
  }
  return list.map(c=>{
   const st=stats(c);
-  let h=`<section class="page"><img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${esc(c.name)}</h1><p class="sub">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, based ${esc(c.base)}. Roster ${esc(PERIOD)}. Printed ${stamp}. ${timesNote()}</p>
+  let h=`<section class="page"><img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${esc(c.name)}</h1><p class="sub">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, based ${esc(c.base)}. Roster ${esc(rangeText())}. Printed ${stamp}. ${timesNote()}</p>
    <table><thead><tr><th>Date</th><th>Duty</th><th>Report</th><th>Flights</th><th>Release</th></tr></thead><tbody>`;
-  crewDays(c).forEach((x,d)=>{
+  crewDays(c,true).forEach((x,d)=>{
    if(x.t==='duty')h+=`<tr><td>${shortDate(d)}</td><td><b>${esc(x.inst.code)}</b><br>${esc(x.inst.type)}</td><td>${tt(x.rep)}</td><td>${legLines(x.x).map(esc).join('<br>')}</td><td>${tt(x.rel)}${x.ns?`<br><span class="ns">Night stop ${esc(x.ns)}</span>`:''}</td></tr>`;
    else h+=`<tr><td>${shortDate(d)}</td><td class="${x.t!=='off'?'lv':''}" colspan="4">${esc(actText(x))}</td></tr>`;
   });
@@ -965,8 +971,8 @@ function doPrint(kind,list){
 }
 function csvAll(){
  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
- const rows=[['Crew','Position','Aircraft','Base','Email',...Array.from({length:DAYS},(_,d)=>shortDate(d)),'Block hours']];
- for(const c of state.crew)rows.push([c.name,RANK[c.rank],typeLabel(c.type),c.base,c.email||'',...crewDays(c).map(x=>x.t==='duty'?x.inst.code+' '+tt(x.rep)+'-'+tt(x.rel)+(x.ns?' night stop '+x.ns:''):x.t==='off'?'':actText(x)),(Math.round(stats(c).block*10)/10)]);
+ const rows=[['Crew','Position','Aircraft','Base','Email',...RD().map(d=>shortDate(d)),'Block hours']];
+ for(const c of state.crew)rows.push([c.name,RANK[c.rank],typeLabel(c.type),c.base,c.email||'',...(cd=>RD().map(d=>cd[d]))(crewDays(c)).map(x=>x.t==='duty'?x.inst.code+' '+tt(x.rep)+'-'+tt(x.rel)+(x.ns?' night stop '+x.ns:''):x.t==='off'?'':actText(x)),(Math.round(stats(c).block*10)/10)]);
  return '\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n');
 }
 function icsFor(c){
@@ -974,22 +980,22 @@ function icsFor(c){
  const t=abs=>{const di=Math.floor(abs/1440),m=((abs%1440)+1440)%1440,dt=dayDate(di);return ''+dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+'T'+pad(Math.floor(m/60))+pad(m%60)+'00'};
  const now=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
  const out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Malawi Airlines Roster Builder//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+e('Roster '+c.name)];
- for(const [k,a] of [...Object.entries(c.acts||{}),...[...R.autoSb.entries()].filter(([key])=>key.startsWith(c.id+'|')).map(([key])=>[ymd(+key.split('|')[1]),{type:'sb',start:ACT.sb.start,end:ACT.sb.end,note:'Planned standby'}])]){const d=dayOfDate(k);if(!a||a.type==='leave'||a.type==='off'||d===null||d<0||d>=DAYS)continue;const s0=d*1440+toMin(a.start);let e0=d*1440+toMin(a.end);if(e0<=s0)e0+=1440;
+ for(const [k,a] of [...Object.entries(c.acts||{}),...[...R.autoSb.entries()].filter(([key])=>key.startsWith(c.id+'|')).map(([key])=>[ymd(+key.split('|')[1]),{type:'sb',start:ACT.sb.start,end:ACT.sb.end,note:'Planned standby'}])]){const d=dayOfDate(k);if(!a||a.type==='leave'||a.type==='off'||d===null||d<0||d>=DAYS||!inR(d))continue;const s0=d*1440+toMin(a.start);let e0=d*1440+toMin(a.end);if(e0<=s0)e0+=1440;
   out.push('BEGIN:VEVENT','UID:act-'+c.id+'-'+d+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(s0-state.tz.offset)+'Z','DTEND:'+t(e0-state.tz.offset)+'Z','SUMMARY:'+e(ACT[a.type].label),'DESCRIPTION:'+e(a.note||''),'END:VEVENT')}
- for(const inst of flightsOf(c))inst.d.days.forEach((x,k)=>{const b=inst.day*1440;
+ for(const inst of flightsOf(c))inst.d.days.forEach((x,k)=>{if(!inR(inst.day+k))return;const b=inst.day*1440;
   out.push('BEGIN:VEVENT','UID:'+inst.id+'-'+k+'-'+c.id+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(b+x.rep-state.tz.offset)+'Z','DTEND:'+t(b+x.rel-state.tz.offset)+'Z',
    'SUMMARY:'+e(inst.code+' '+legRoute(x.legs)),'LOCATION:'+e(x.legs[0].from),
    'DESCRIPTION:'+e('Report '+tt(b+x.rep)+'\n'+legLines(x).join('\n')+'\nRelease '+tt(b+x.rel)+(k<inst.days.length-1?'\nNight stop '+x.end:'')),'END:VEVENT')});
  out.push('END:VCALENDAR');return out.join('\r\n');
 }
 function personText(c){
- return `Hello ${c.name.split(' ')[0]},\n\nPlease find your roster for ${PERIOD} attached as a PDF.\n\n${AIRLINE} Crew Control`;
+ return `Hello ${c.name.split(' ')[0]},\n\nPlease find your roster for ${rangeText()} attached as a PDF.\n\n${AIRLINE} Crew Control`;
 }
 function fullText(){
- let t=`${AIRLINE} crew roster, ${PERIOD}. ${timesNote()}\n\n`;
+ let t=`${AIRLINE} crew roster, ${rangeText()}. ${timesNote()}\n\n`;
  for(const c of state.crew){
   t+=`${c.name} (${RANK[c.rank]}, ${typeLabel(c.type)}, ${c.base})\n`;
-  const lines=[];crewDays(c).forEach((x,d)=>{if(x.t==='duty')lines.push(`  ${shortDate(d)}  ${x.inst.code}  ${tt(x.rep)}-${tt(x.rel)}  ${x.inst.d.days[x.k].legs.length?legRoute(x.x.legs):''}${x.ns?'  night stop '+x.ns:''}`);else if(x.t!=='off')lines.push(`  ${shortDate(d)}  ${actText(x)}`)});
+  const lines=[];crewDays(c,true).forEach((x,d)=>{if(x.t==='duty')lines.push(`  ${shortDate(d)}  ${x.inst.code}  ${tt(x.rep)}-${tt(x.rel)}  ${x.inst.d.days[x.k].legs.length?legRoute(x.x.legs):''}${x.ns?'  night stop '+x.ns:''}`);else if(x.t!=='off')lines.push(`  ${shortDate(d)}  ${actText(x)}`)});
   t+=(lines.join('\n')||'  No duties')+'\n\n';
  }
  return t;
@@ -1020,11 +1026,11 @@ function pdfPersonPages(c){
  const pages=[],M=40,TW=515,cols=[M,M+80,M+152,M+204,M+404];let cs='',y=0;
  const T=(x,yy,v,size,bold,gray)=>{cs+=`BT ${gray||0} g /${bold?'F2':'F1'} ${size} Tf ${x} ${yy} Td (${pdfStr(v)}) Tj ET\n`};
  const stamp=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
- const header=cont=>{cs='q 74 0 0 52 481 768 cm /Im1 Do Q\n';T(M,796,c.name+(cont?' (continued)':''),18,true);T(M,778,`${RANK[c.rank]}, ${typeLabel(c.type)}, based ${c.base}. Roster ${PERIOD}. ${timesNote()}`,10,false,0.3);
+ const header=cont=>{cs='q 74 0 0 52 481 768 cm /Im1 Do Q\n';T(M,796,c.name+(cont?' (continued)':''),18,true);T(M,778,`${RANK[c.rank]}, ${typeLabel(c.type)}, based ${c.base}. Roster ${rangeText()}. ${timesNote()}`,10,false,0.3);
   y=760;cs+=`0.9 g ${M} ${y-18} ${TW} 18 re f\n`;['Date','Duty','Report','Flights','Release'].forEach((h,i)=>T(cols[i]+4,y-13,h,9.5,true));y-=18};
  const footer=()=>T(M,28,AIRLINE+' crew roster, printed '+stamp,8,false,0.45);
  header(false);
- crewDays(c).forEach((x,d)=>{
+ crewDays(c,true).forEach((x,d)=>{
   const cells=x.t==='duty'?[[shortDate(d)],[x.inst.code,x.inst.type],[tt(x.rep)],legLines(x.x),[tt(x.rel)].concat(x.ns?['Night stop '+x.ns]:[])]:(x.t==='sim'||x.t==='sb')?[[shortDate(d)],[x.t==='sim'?'SIM':'Standby'],[ts(x.a.start)],[x.a.note||ACT[x.t].label],[ts(x.a.end)]]:[[shortDate(d)],[x.t==='leave'?'Leave':'Day off'],[],[],[]];
   const h=Math.max(...cells.map(a=>a.length))*12+8;
   if(y-h<60){footer();pages.push(cs);header(true)}
@@ -1103,14 +1109,14 @@ function copyCompose(){
  else{ta.select();try{document.execCommand('copy');done()}catch(e){toast('Text selected. Tap Copy.')}}
 }
 function composePerson(c){
- openCompose({title:'Send roster PDF to '+c.name,to:c.email||'',subject:'Your '+AIRLINE+' roster, '+PERIOD,body:personText(c),person:c,
+ openCompose({title:'Send roster PDF to '+c.name,to:c.email||'',subject:'Your '+AIRLINE+' roster, '+rangeText(),body:personText(c),person:c,
   pdfOnly:true,files:[{name:slug(c.name)+'-roster.pdf',data:pdfFor([c]),type:'application/pdf'}]});
 }
 const selList=()=>state.crew.filter(c=>ui.sel.has(c.id));
 async function sendAllPdf(){
  const list=selList();if(!list.length){toast('Select at least one crew member first.');return}
  const name=(list.length===1?slug(list[0].name)+'-roster':'rosters-'+list.length+'-crew')+'.pdf',data=pdfFor(list);
- if(canShareFiles()){try{await navigator.share({title:AIRLINE+' rosters, '+PERIOD,text:'Rosters for '+PERIOD+' are attached, one page per person.',files:[new File([data],name,{type:'application/pdf'})]})}catch(e){if(e&&e.name!=='AbortError')offerFile(name,data,'application/pdf')}}
+ if(canShareFiles()){try{await navigator.share({title:AIRLINE+' rosters, '+rangeText(),text:'Rosters for '+rangeText()+' are attached, one page per person.',files:[new File([data],name,{type:'application/pdf'})]})}catch(e){if(e&&e.name!=='AbortError')offerFile(name,data,'application/pdf')}}
  else offerFile(name,data,'application/pdf');
 }
 const fullFiles=()=>[{name:'crew-roster.html',data:printDoc('full',state.crew,'Crew roster'),type:'text/html'},{name:'crew-roster.csv',data:csvAll(),type:'text/csv'}];
@@ -1289,9 +1295,9 @@ document.addEventListener('click',e=>{
  if(b.id==='printeach'){doPrint('each',state.crew);return}
  if(b.id==='dlhtml'){offerFile('crew-roster.html',printDoc('full',state.crew,'Crew roster'),'text/html');return}
  if(b.id==='dlcsv'){offerFile('crew-roster.csv',csvAll(),'text/csv');return}
- if(b.id==='emailfull'){openCompose({title:'Email the full roster',to:$('#fullto').value.trim(),subject:AIRLINE+' crew roster, '+PERIOD,body:fullText(),files:fullFiles()});return}
+ if(b.id==='emailfull'){openCompose({title:'Email the full roster',to:$('#fullto').value.trim(),subject:AIRLINE+' crew roster, '+rangeText(),body:fullText(),files:fullFiles()});return}
  if(b.id==='emailall'){const all=state.crew.filter(c=>c.email).map(c=>c.email);if(!all.length){toast('No crew have email addresses yet.');return}
-  openCompose({title:'Email all crew',to:'',bcc:all.join(', '),subject:AIRLINE+' crew roster, '+PERIOD,body:fullText(),files:fullFiles()});return}
+  openCompose({title:'Email all crew',to:'',bcc:all.join(', '),subject:AIRLINE+' crew roster, '+rangeText(),body:fullText(),files:fullFiles()});return}
  if(b.id==='msend'){sendCompose();return}
  if(b.id==='mattach'){emailWithAttachment();return}
  if(b.id==='mdl'){const f=compose.files[0];offerFile(f.name,f.data,f.type);return}
@@ -1304,6 +1310,7 @@ document.addEventListener('click',e=>{
   if(ds.acttype==='sim'||ds.acttype==='sb'){const a=actOf(ui.dayDraft.c,ui.dayDraft.d);if(!a||a.type!==ds.acttype){$('#actstart').value=ts(ACT[ds.acttype].start);$('#actend').value=ts(ACT[ds.acttype].end)}}return}
  if(b.id==='actsave'){saveDay();return}
  if(ds.month){const [y,m]=state.month.split('-').map(Number);goMonth(monthKey(new Date(y,m-1+(+ds.month),1)));return}
+ if(ds.range){state.range=ds.range;save();render();toast(ds.range==='month'?'Showing the whole month.':'Showing '+rangeText()+'. Prints, PDFs and emails follow this view.');return}
  if(ds.tz){state.tz.gmt=ds.tz==='gmt';save();render();toast('Times now shown in '+tzName()+'.');return}
  if(ds.putflight&&ui.dayDraft){const inst=R.insts.find(i=>i.id===ds.putflight),c=ui.dayDraft.c;inst.days.forEach(d=>{if(actOf(c,d)&&actOf(c,d).type==='sb')delete c.acts[ymd(d)]});
   lockCrew(inst,c.rank,c,null);dlg.close();commit(c.name+' put on '+inst.code+', '+dayLabel(inst.day)+'.');const f=R.seats.find(s=>s.inst.id===inst.id&&s.crew===c);if(f&&f.flag)toast(c.name+' put on '+inst.code+'. Flagged: '+f.flag);return}
