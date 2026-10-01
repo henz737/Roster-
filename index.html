@@ -20,7 +20,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 .logotile{flex:none;background:#fff;border-radius:10px;padding:6px 8px;border:1px solid var(--line);line-height:0}
 .logotile img{height:56px;width:auto;display:block}
 @media (max-width:520px){.brand{align-items:flex-start}.logotile img{height:44px}}
-header.top{max-width:1400px;margin:0 auto;padding:22px 16px 10px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.monthbar{max-width:1400px;margin:0 auto;padding:2px 16px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.monthbar select{font-weight:700;font-size:17px}
+.monthbar .grp{display:flex;gap:6px;align-items:center}
+max-width:1400px;margin:0 auto;padding:22px 16px 10px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
 h1{margin:0;font-size:clamp(30px,5vw,46px);line-height:1.05;font-weight:700;letter-spacing:-.01em}
 h2{font-size:21px;margin:0 0 8px}
 .sub{margin:6px 0 0;color:var(--muted);max-width:62ch}
@@ -154,6 +157,7 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
     <button class="btn ghost" id="reset">Reset sample data</button>
   </div>
 </header>
+<div class="monthbar" id="monthbar"></div>
 <nav class="tabs" role="tablist">
   <button class="tab" role="tab" data-tab="roster" aria-selected="true">Roster</button>
   <button class="tab" role="tab" data-tab="share" aria-selected="false">Print and email</button>
@@ -215,7 +219,7 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
   <section id="tab-flights" hidden>
     <div class="panel">
       <div class="panelhead"><h2>Flights and routes</h2><button class="btn" id="addflight">Add flight</button></div>
-      <p class="note">Each flight is one duty day that starts and ends at the crew base. Times are local. Report and release times are worked out from the Rules tab.</p>
+      <p class="note">Each flight is one duty day that starts and ends at the crew base. Times follow the GMT or local switch at the top. Report and release times are worked out from the Rules tab.</p>
       <div class="tablewrap"><table class="list" id="patterns"></table></div>
     </div>
   </section>
@@ -284,12 +288,23 @@ textarea{font:inherit;font-weight:400;font-size:14px;width:100%;min-height:200px
 
 <script>
 const LOGO_JPG='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',LOGO_W=360,LOGO_H=254,AIRLINE='Malawi Airlines';
-const DAYS=14, START=new Date(2026,9,5), DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], MAXTRIP=4;
+let DAYS=31, START=new Date(2026,9,1), PERIOD='';
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], MAXTRIP=4;
 const RANK={CPT:'Captain',FO:'First officer',CC:'Cabin crew'};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dayDate=d=>{const t=new Date(START);t.setDate(t.getDate()+d);return t};
-const dayLabel=d=>DOW[((d%7)+7)%7]+' '+dayDate(d).getDate();
+const wd=d=>(dayDate(d).getDay()+6)%7;
+const dayLabel=d=>DOW[wd(d)]+' '+dayDate(d).getDate();
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function setPeriod(ym){const [y,m]=ym.split('-').map(Number);START=new Date(y,m-1,1);DAYS=new Date(y,m,0).getDate();PERIOD='1 to '+DAYS+' '+MONTHS[m-1]+' '+y}
+const tzOff=()=>state&&state.tz&&state.tz.gmt?state.tz.offset:0;
+const tt=m=>hhmm(m-tzOff());
+const ts=v=>validTime(v)?hhmm(toMin(v)-tzOff()):(v||'');
+const toStore=v=>validTime(v)?hhmm(toMin(v)+tzOff()):v;
+const tzName=()=>state.tz.gmt?'GMT':'local time (GMT+'+state.tz.offset/60+')';
+const timesNote=()=>state.tz.gmt?'Times are GMT.':'Times are local (GMT+'+state.tz.offset/60+').';
+const monthKey=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
 const longDay=d=>dayDate(d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
 const validTime=t=>/^\d{2}:\d{2}$/.test(t||'');
 const toMin=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
@@ -315,7 +330,7 @@ const DEFAULT_PATTERNS=[
  {code:'LK1',type:'B737',dow:[1,3,5],duties:[[L('LLW','NBO','07:30','10:30'),L('NBO','LLW','11:30','14:30')]]},
  {code:'LA1',type:'B737',dow:[5],duties:[[L('LLW','ADD','15:00','19:10')],[L('ADD','LLW','10:00','14:10')]]},
 ];
-const DEFAULT_RULES={reportBefore:60,releaseAfter:30,maxDutyDay:13,minRest:12,maxDuty7:60,maxBlock:50,maxConsec:5,minDaysOff:4,maxOffWeek:4};
+const DEFAULT_RULES={reportBefore:60,releaseAfter:30,maxDutyDay:13,minRest:12,maxDuty7:60,maxBlockM:100,maxConsec:5,minDaysOffM:8,maxOffWeek:4};
 function defaultCrew(){
  const F=['Chikondi','Thoko','Kondwani','Madalitso','Tiwonge','Chisomo','Mphatso','Limbani','Yamikani','Dalitso','Tamanda','Pemphero','Kumbukani','Chimwemwe','Takondwa','Wezi','Esther','Grace','Mercy','Patience','Lusungu','Temwa','Chifundo','Fatsani','Zione','Tadala','Chawezi','Mayeso','Khumbo','Tawonga','Upile','Atupele','Innocent','Blessings','Joseph','Ruth'];
  const S=['Banda','Phiri','Mwale','Chirwa','Nyirenda','Kamanga','Gondwe','Mkandawire','Tembo','Mhango','Kumwenda','Msiska','Kachingwe','Mbewe','Jere','Nkhoma','Chisale','Mvula','Soko','Manda','Munthali','Kalua','Chimombo','Zgambo','Longwe','Kalilani'];
@@ -324,16 +339,17 @@ function defaultCrew(){
  add('CPT','Q400','LLW',5);add('CPT','B737','LLW',4);add('CPT','Q400','BLZ',3);
  add('FO','Q400','LLW',5);add('FO','B737','LLW',4);add('FO','Q400','BLZ',3);
  add('CC','ALL','LLW',20);add('CC','ALL','BLZ',4);
- [[0,[2,3]],[6,[8,9,10]],[14,[0,1]],[25,[4,5,6]],[40,[11,12]]].forEach(([i,d])=>{if(out[i])d.forEach(x=>out[i].acts[x]={type:'leave'})});
- if(out[2]){out[2].acts[7]={type:'sim',start:'08:00',end:'16:00',note:'OPC and LPC, JNB simulator'};out[2].acts[8]={type:'sim',start:'08:00',end:'16:00',note:'OPC and LPC, JNB simulator'}}
- if(out[5])out[5].acts[3]={type:'sb',start:'05:00',end:'17:00',note:'Airport standby'};
- if(out[17])out[17].acts[10]={type:'sb',start:'05:00',end:'17:00',note:'Home standby'};
+ const K=n=>{const t=new Date(2026,9,5+n);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
+ [[0,[2,3]],[6,[8,9,10]],[14,[0,1]],[25,[4,5,6]],[40,[11,12]],[3,[19,20,21,22]],[30,[16,17,18]]].forEach(([i,d])=>{if(out[i])d.forEach(x=>out[i].acts[K(x)]={type:'leave'})});
+ if(out[2]){out[2].acts[K(7)]={type:'sim',start:'08:00',end:'16:00',note:'OPC and LPC, JNB simulator'};out[2].acts[K(8)]={type:'sim',start:'08:00',end:'16:00',note:'OPC and LPC, JNB simulator'}}
+ if(out[5])out[5].acts[K(3)]={type:'sb',start:'05:00',end:'17:00',note:'Airport standby'};
+ if(out[17])out[17].acts[K(10)]={type:'sb',start:'05:00',end:'17:00',note:'Home standby'};
  if(out[1])out[1].med='2026-10-10';
  if(out[19])out[19].lic='2026-10-25';
  if(out[33])out[33].rec='2026-09-30';
  return out;
 }
-const freshState=()=>({fleet:clone(DEFAULT_FLEET),patterns:DEFAULT_PATTERNS.map(p=>({id:uid(),...clone(p)})),crew:defaultCrew(),rules:{...DEFAULT_RULES},intro:true,locks:{},excl:{}});
+const freshState=()=>({fleet:clone(DEFAULT_FLEET),patterns:DEFAULT_PATTERNS.map(p=>({id:uid(),...clone(p)})),crew:defaultCrew(),rules:{...DEFAULT_RULES},intro:true,locks:{},excl:{},month:'2026-10',tz:{gmt:true,offset:120}});
 let state;
 try{state=JSON.parse(localStorage.getItem('crew-roster-v2'))}catch(e){state=null}
 if(!state||!state.crew||!state.fleet)state=freshState();
@@ -341,10 +357,18 @@ function migrate(st){
  st.fleet=st.fleet||[];st.patterns=st.patterns||[];st.crew=st.crew||[];
  st.patterns.forEach(p=>{if(!p.duties){p.duties=[p.legs||[]];delete p.legs}if(!p.id)p.id=uid();if(!p.dow)p.dow=[]});
  st.crew.forEach(c=>{if(!c.id)c.id=uid();if(!c.acts){c.acts={};(c.leave||[]).forEach(d=>c.acts[d]={type:'leave'})}delete c.leave;['lic','med','rec','email'].forEach(k=>{if(c[k]==null)c[k]=''})});
- st.locks=st.locks||{};st.excl=st.excl||{};st.rules={...DEFAULT_RULES,...(st.rules||{})};
+ st.locks=st.locks||{};st.excl=st.excl||{};st.rules={...DEFAULT_RULES,...(st.rules||{})};delete st.rules.maxBlock;delete st.rules.minDaysOff;
+ // older versions keyed days by number from 5 Oct 2026
+ const K=n=>{const t=new Date(2026,9,5+(+n));return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
+ st.crew.forEach(c=>{const a={};for(const k in c.acts)a[/^\d+$/.test(k)?K(k):k]=c.acts[k];c.acts=a});
+ const fixId=id=>id.replace(/-(\d+)$/,(m,n)=>'-'+K(n));
+ const L2={};for(const k in st.locks){const [iid,r]=k.split('|');L2[(/-\d{4}-\d{2}-\d{2}$/.test(iid)?iid:fixId(iid))+'|'+r]=st.locks[k]}st.locks=L2;
+ const E2={};for(const k in st.excl)E2[/-\d{4}-\d{2}-\d{2}$/.test(k)?k:fixId(k)]=st.excl[k];st.excl=E2;
+ st.month=st.month||'2026-10';st.tz=st.tz||{gmt:true,offset:120};
  return st;
 }
 migrate(state);
+setPeriod(state.month);
 const save=()=>{try{localStorage.setItem('crew-roster-v2',JSON.stringify(state))}catch(e){}};
 const ui={tab:'roster',rank:'ALL',base:'ALL',crewRank:'ALL',view:'grid',person:null,sel:new Set()};
 let R=null,draft=null;
@@ -362,10 +386,11 @@ const DOCS=[['lic','Licence'],['med','Medical'],['rec','Recurrent training']];
 function docIssue(c,day){for(const[k,l] of DOCS){const d=dayOfDate(c[k]);if(d!==null&&d<day)return l+' expired '+fmtDate(c[k])}return null}
 function docStatus(c){return DOCS.map(([k,l])=>{const d=dayOfDate(c[k]);if(d===null)return {k,l,v:'',st:'none'};return {k,l,v:c[k],st:d<0?'expired':d<DAYS-1?'period':d<DAYS+30?'soon':'ok'}})}
 const ACT={leave:{label:'Leave',short:'Leave'},sim:{label:'Simulator or recurrent training',short:'SIM',start:'08:00',end:'16:00'},sb:{label:'Standby',short:'SBY',start:'05:00',end:'17:00'}};
-const actOf=(c,d)=>c.acts&&c.acts[d]||null;
+const actOf=(c,d)=>c.acts&&c.acts[ymd(d)]||null;
+const inMonth=k=>{const d=dayOfDate(k);return d!==null&&d>=0&&d<DAYS};
 function actInsts(c){
  const out=[];
- for(const k in (c.acts||{})){const a=c.acts[k],d=+k;if(!a||a.type==='leave'||d<0||d>=DAYS||!validTime(a.start)||!validTime(a.end))continue;
+ for(const k in (c.acts||{})){const a=c.acts[k],d=dayOfDate(k);if(!a||a.type==='leave'||a.type==='off'||d===null||d<0||d>=DAYS||!validTime(a.start)||!validTime(a.end))continue;
   const s=d*1440+toMin(a.start);let e=d*1440+toMin(a.end);if(e<=s)e+=1440;
   out.push({act:true,id:'a-'+c.id+'-'+d,code:ACT[a.type].short,kind:a.type,day:d,days:[d],start:s,end:e,block:0,periods:[{s,e}],note:a.note||''});}
  return out;
@@ -435,9 +460,9 @@ function buildInstances(){
  for(const p of state.patterns){
   const v=validate(p,p.id);if(v.e.length)continue;const d=v.d,f=fleetOf(p.type);
   for(let day=0;day<DAYS;day++){
-   if(!p.dow.includes(day%7))continue;
+   if(!p.dow.includes(wd(day)))continue;
    const b=day*1440;
-   out.push({id:p.id+'-'+day,code:p.code,p,d,type:p.type,base:d.base,route:d.route,day,days:d.days.map((_,k)=>day+k),
+   out.push({id:p.id+'-'+ymd(day),code:p.code,p,d,type:p.type,base:d.base,route:d.route,day,days:d.days.map((_,k)=>day+k),
     start:b+d.rep,end:b+d.rel,block:d.block,periods:d.days.map(x=>({s:b+x.rep,e:b+x.rel})),seats:['CPT','FO',...Array(f.cc).fill('CC')]});
   }
  }
@@ -458,9 +483,9 @@ function check(c,inst,list,rules){
  const win=(f,t)=>per.reduce((s,x)=>s+Math.max(0,Math.min(x.e,t)-Math.max(x.s,f)),0);
  if(Math.max(win(inst.end-W,inst.end),win(inst.start,inst.start+W))>rules.maxDuty7*60)return 'Would pass '+rules.maxDuty7+'h duty in 7 days';
  const blk=list.reduce((s,a)=>s+a.block,0)+inst.block;
- if(blk>rules.maxBlock+1e-9)return 'Would pass '+rules.maxBlock+'h block for the period ('+hrs(blk)+')';
+ if(blk>rules.maxBlockM+1e-9)return 'Would pass '+rules.maxBlockM+'h block for the month ('+hrs(blk)+')';
  const days=new Set([...list.flatMap(a=>a.days),...inst.days]);
- if([...days].filter(x=>x<DAYS).length>DAYS-rules.minDaysOff)return 'Would leave fewer than '+rules.minDaysOff+' days off';
+ if([...days].filter(x=>x<DAYS).length>DAYS-rules.minDaysOffM)return 'Would leave fewer than '+rules.minDaysOffM+' days off in the month';
  let lo=inst.days[0],hi=inst.days[inst.days.length-1];while(days.has(lo-1))lo--;while(days.has(hi+1))hi++;
  if(hi-lo+1>rules.maxConsec)return 'Would work '+(hi-lo+1)+' days in a row';
  return null;
@@ -525,19 +550,22 @@ function solve(){
  // 5. No more than N days off in any week (Mon to Sun). Leave is not a day off.
  const maxOff=rules.maxOffWeek,autoSb=new Map(),offBreaches=[];
  const isOff=(c,d)=>{const a=actOf(c,d);if(a&&a.type==='leave')return false;return !byCrew.get(c.id).some(x=>x.days.includes(d))};
- const offIn=(c,w0)=>{let n=0;for(let d=w0;d<Math.min(w0+7,DAYS);d++)if(isOff(c,d))n++;return n};
- const weeks=[];for(let w=0;w<DAYS;w+=7)weeks.push(w);
+ const wEnd=w0=>{let d=w0;while(d+1<DAYS&&wd(d+1)!==0)d++;return d};
+ const wStart=d=>Math.max(0,d-wd(d));
+ const allow=w0=>{const k=wEnd(w0)-w0+1;return k-Math.floor((7-maxOff)*k/7)};
+ const offIn=(c,w0)=>{let n=0;for(let d=w0;d<=wEnd(w0);d++)if(isOff(c,d))n++;return n};
+ const weeks=[0];for(let d=1;d<DAYS;d++)if(wd(d)===0)weeks.push(d);
  if(maxOff<7){
   // 5a. Give spare trips to crew with too many days off, taking them from crew who can spare them
-  const short=[];state.crew.forEach(c=>weeks.forEach(w0=>{const x=offIn(c,w0)-maxOff;if(x>0)short.push({c,w0,x})}));
+  const short=[];state.crew.forEach(c=>weeks.forEach(w0=>{const x=offIn(c,w0)-allow(w0);if(x>0)short.push({c,w0,x})}));
   short.sort((a,b)=>b.x-a.x);
   for(const {c,w0} of short){
-   while(offIn(c,w0)>maxOff){
+   while(offIn(c,w0)>allow(w0)){
     let moved=false;
     for(const s of seats){
-     if(s.locked||!s.crew||s.crew===c||s.inst.day<w0||s.inst.day>=w0+7||!s.pool.includes(c)||!s.inst.days.every(d=>isOff(c,d)))continue;
-     const h=s.crew,hw=[...new Set(s.inst.days.filter(d=>d<DAYS).map(d=>d-d%7))];
-     if(hw.some(ww=>offIn(h,ww)+s.inst.days.filter(d=>d>=ww&&d<ww+7).length>maxOff))continue;
+     if(s.locked||!s.crew||s.crew===c||s.inst.day<w0||s.inst.day>wEnd(w0)||!s.pool.includes(c)||!s.inst.days.every(d=>isOff(c,d)))continue;
+     const h=s.crew,hw=[...new Set(s.inst.days.filter(d=>d<DAYS).map(wStart))];
+     if(hw.some(ww=>offIn(h,ww)+s.inst.days.filter(d=>d>=ww&&d<=wEnd(ww)).length>allow(ww)))continue;
      if(check(c,s.inst,byCrew.get(c.id),rules))continue;
      const l=byCrew.get(h.id);l.splice(l.indexOf(s.inst),1);byCrew.get(c.id).push(s.inst);
      s.log.notes=['Moved from '+h.name+' to '+c.name+' so that '+c.name.split(' ')[0]+' has no more than '+maxOff+' days off that week.'];s.crew=c;moved=true;break;
@@ -547,9 +575,9 @@ function solve(){
   }
   // 5b. Fill any remaining extra days off with planned standby, where it is legal
   for(const c of state.crew)for(const w0 of weeks){
-   let need=offIn(c,w0)-maxOff;if(need<=0)continue;
+   let need=offIn(c,w0)-allow(w0);if(need<=0)continue;
    const busy=d=>d>=0&&d<DAYS&&!isOff(c,d);
-   const days=[];for(let d=w0;d<Math.min(w0+7,DAYS);d++){const a=actOf(c,d);if(isOff(c,d)&&!(a&&a.type==='off'))days.push(d)}
+   const days=[];for(let d=w0;d<=wEnd(w0);d++){const a=actOf(c,d);if(isOff(c,d)&&!(a&&a.type==='off'))days.push(d)}
    days.sort((a,b)=>((busy(b-1)||busy(b+1))-(busy(a-1)||busy(a+1)))||a-b);
    for(const d of days){
     if(need<=0)break;
@@ -558,7 +586,7 @@ function solve(){
     if(!check(c,sb,byCrew.get(c.id),rules)){byCrew.get(c.id).push(sb);autoSb.set(c.id+'|'+d,sb);need--}
    }
    const left=offIn(c,w0);
-   if(left>maxOff)offBreaches.push({c,w0,off:left,why:docIssue(c,w0)?'documents expired':'no legal flight or standby fits'+(state.crew.length?'':'')});
+   if(left>allow(w0))offBreaches.push({c,w0,off:left,lim:allow(w0),why:docIssue(c,w0)?'documents expired':'no legal flight or standby fits'+(state.crew.length?'':'')});
   }
  }
  // 6. Audit every assignment, so manual changes that break a rule are flagged
@@ -569,6 +597,15 @@ function solve(){
 function rebuild(){R=solve();render()}
 
 /* ---------- Rendering ---------- */
+function renderMonthBar(){
+ const now=new Date(),opts=[];
+ for(let k=-6;k<=24;k++){const t=new Date(now.getFullYear(),now.getMonth()+k,1),key=monthKey(t);opts.push(`<option value="${key}" ${key===state.month?'selected':''}>${MONTHS[t.getMonth()]} ${t.getFullYear()}</option>`)}
+ if(!opts.some(o=>o.includes('"'+state.month+'"'))){const [y,m]=state.month.split('-');opts.unshift(`<option value="${state.month}" selected>${MONTHS[m-1]} ${y}</option>`)}
+ const off=state.tz.offset/60;
+ $('#monthbar').innerHTML=`<div class="grp"><button class="btn ghost small" data-month="-1" aria-label="Previous month">‹</button><select id="monthsel" aria-label="Roster month">${opts.join('')}</select><button class="btn ghost small" data-month="1" aria-label="Next month">›</button></div>
+  <div class="grp" role="group" aria-label="Time zone"><button class="chip" data-tz="gmt" aria-pressed="${state.tz.gmt}">GMT</button><button class="chip" data-tz="local" aria-pressed="${!state.tz.gmt}">Local (GMT${off>=0?'+':''}${off})</button></div>`;
+}
+function goMonth(key){state.month=key;setPeriod(key);save();rebuild();const [y,m]=key.split('-');toast('Showing '+MONTHS[m-1]+' '+y+'.')}
 function renderSummary(){
  const total=R.seats.length,open=R.seats.filter(s=>!s.crew).length;
  const blk=id=>R.byCrew.get(id).reduce((t,a)=>t+a.block,0);
@@ -577,7 +614,7 @@ function renderSummary(){
  const flaggedSeats=R.seats.filter(s=>s.flag).sort((a,b)=>a.inst.start-b.inst.start),flagged=flaggedSeats.length+R.offBreaches.length;
  const docAlerts=[];state.crew.forEach(c=>docStatus(c).forEach(d=>{if(d.st==='expired'||d.st==='period'||d.st==='soon')docAlerts.push({c,d})}));
  $('#flags').innerHTML=(flagged||docAlerts.length)?`<h2>Flags</h2><p class="note">Rule breaks come from manual changes or from crew who couldn't be given enough work in a week. Crew with an expired document are never rostered automatically.</p><div class="flaglist">${
-  R.offBreaches.map(o=>`<div class="flagrow"><button class="btn small" data-viewc="${o.c.id}">View</button><span><b>${esc(o.c.name)}</b>: ${o.off} days off in the week of ${dayLabel(o.w0)} (limit ${state.rules.maxOffWeek}), ${esc(o.why)}</span></div>`).join('')+
+  R.offBreaches.map(o=>`<div class="flagrow"><button class="btn small" data-viewc="${o.c.id}">View</button><span><b>${esc(o.c.name)}</b>: ${o.off} days off in the week of ${dayLabel(o.w0)} (limit ${o.lim}), ${esc(o.why)}</span></div>`).join('')+
   flaggedSeats.map(s=>`<div class="flagrow"><button class="btn small" data-seat="${s.idx}">${esc(s.inst.code)} ${dayLabel(s.inst.day)}</button><span><b>${esc(s.crew.name)}</b>: ${esc(s.flag)}</span></div>`).join('')+
   docAlerts.map(({c,d})=>`<div class="flagrow ${d.st==='soon'?'warn':''}"><button class="btn ghost small" data-editc="${c.id}">Update</button><span><b>${esc(c.name)}</b>: ${d.l} ${d.st==='expired'?'expired':'expires'} ${fmtDate(d.v)}${d.st==='period'?' (during this roster, no flights after that)':d.st==='expired'?' (cannot be rostered)':' (soon after this roster)'}</span></div>`).join('')}</div>`:'';
  $('#summary').innerHTML=`
@@ -604,15 +641,15 @@ function renderFilters(){
 }
 function stripHTML(s,k){
  const i=s.inst,x=i.d.days[k],multi=i.days.length>1;
- return `<button class="strip${k>0?' cont':''}${s.flag?' flag':''}" style="border-left-color:${typeColor(i.type)}" data-seat="${s.idx}"><span class="cd">${esc(i.code)}${multi?' day '+(k+1):''}</span><span class="rt">${esc(legRoute(x.legs))}</span><span class="tm">${hhmm(x.tl[0].d)}–${hhmm(x.tl[x.tl.length-1].a)}</span>${k<i.days.length-1?`<span class="ns">Night stop ${esc(x.end)}</span>`:''}${s.flag?'<span class="fl">! '+esc(s.flag.split(' (')[0])+'</span>':s.locked?'<span class="lk">Set manually</span>':''}</button>`;
+ return `<button class="strip${k>0?' cont':''}${s.flag?' flag':''}" style="border-left-color:${typeColor(i.type)}" data-seat="${s.idx}"><span class="cd">${esc(i.code)}${multi?' day '+(k+1):''}</span><span class="rt">${esc(legRoute(x.legs))}</span><span class="tm">${tt(x.tl[0].d)}–${tt(x.tl[x.tl.length-1].a)}</span>${k<i.days.length-1?`<span class="ns">Night stop ${esc(x.end)}</span>`:''}${s.flag?'<span class="fl">! '+esc(s.flag.split(' (')[0])+'</span>':s.locked?'<span class="lk">Set manually</span>':''}</button>`;
 }
 function actCell(c,d){
  const a=actOf(c,d),lbl=`${esc(c.name)}, ${dayLabel(d)}`,au=R.autoSb.get(c.id+'|'+d);
- if(au)return `<button class="cell act sb" data-day="${c.id}|${d}" aria-label="Planned standby, ${lbl}"><b>SBY</b><span>${ACT.sb.start}–${ACT.sb.end} planned</span></button>`;
+ if(au)return `<button class="cell act sb" data-day="${c.id}|${d}" aria-label="Planned standby, ${lbl}"><b>SBY</b><span>${ts(ACT.sb.start)}–${ts(ACT.sb.end)} planned</span></button>`;
  if(a&&a.type==='off')return `<button class="cell" data-day="${c.id}|${d}" aria-label="Day off kept free, ${lbl}"><span class="reason" style="font-size:12px">Kept free</span></button>`;
  if(!a)return `<button class="cell" data-day="${c.id}|${d}" aria-label="Plan ${lbl}"></button>`;
  if(a.type==='leave')return `<button class="cell leave" data-day="${c.id}|${d}" aria-label="Leave, ${lbl}">Leave</button>`;
- return `<button class="cell act ${a.type}" data-day="${c.id}|${d}" aria-label="${ACT[a.type].label}, ${lbl}"><b>${ACT[a.type].short}</b><span>${a.start}–${a.end}</span></button>`;
+ return `<button class="cell act ${a.type}" data-day="${c.id}|${d}" aria-label="${ACT[a.type].label}, ${lbl}"><b>${ACT[a.type].short}</b><span>${ts(a.start)}–${ts(a.end)}</span></button>`;
 }
 function docMeta(c){const bad=docStatus(c).filter(d=>d.st==='expired'||d.st==='period');return bad.length?`<span class="meta docbad">${bad.map(d=>d.l+' '+(d.st==='expired'?'expired':'ends '+fmtDate(d.v))).join(', ')}</span>`:''}
 function renderPerson(){
@@ -631,7 +668,7 @@ function renderGrid(){
  const map=new Map();R.seats.forEach(s=>{if(s.crew)s.inst.days.forEach((d,k)=>map.set(s.crew.id+'|'+d,[s,k]))});
  const crew=state.crew.filter(c=>(ui.rank==='ALL'||c.rank===ui.rank)&&(ui.base==='ALL'||c.base===ui.base));
  let h='<thead><tr><th class="who">Crew</th>';
- for(let d=0;d<DAYS;d++)h+=`<th class="${d%7>4?'we':''}">${dayLabel(d)}</th>`;
+ for(let d=0;d<DAYS;d++)h+=`<th class="${wd(d)>4?'we':''}">${dayLabel(d)}</th>`;
  h+='<th>Block</th></tr></thead><tbody>';
  for(const c of crew){
   h+=`<tr><th class="who" scope="row"><span class="nm">${esc(c.name)}</span><span class="meta">${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</span>${docMeta(c)}</th>`;
@@ -654,7 +691,7 @@ function renderPatterns(){
   return `<tr><td><b>${esc(p.code||'Untitled')}</b></td>
    <td><span class="tdot" style="background:${typeColor(p.type)}"></span>${esc(p.type)}</td>
    <td>${esc(routeOf(p))}${n>1?`<div class="note" style="margin:2px 0 0">${n}-day trip, night stop ${esc((d?d.nights:p.duties.slice(0,-1).map(x=>x[x.length-1]?.to)).join(', '))}</div>`:''}${v.e.length?`<div class="warnline">${esc(v.e[0])}</div>`:''}</td>
-   <td>${d?hhmm(d.days[0].tl[0].d)+'–'+hhmm(last.tl[last.tl.length-1].a)+(n>1?' day '+n:''):'–'}</td>
+   <td>${d?tt(d.days[0].tl[0].d)+'–'+tt(last.tl[last.tl.length-1].a)+(n>1?' day '+n:''):'–'}</td>
    <td>${d?dur(d.block*60):'–'}</td><td>${d?dur(d.maxDuty*60):'–'}</td>
    <td>${daysText(p.dow)}</td>
    <td class="acts"><button class="btn ghost small" data-editp="${p.id}">Edit</button> <button class="btn ghost small" data-copyp="${p.id}">Copy</button> <button class="btn danger small" data-delp="${p.id}">Delete</button></td></tr>`;
@@ -686,7 +723,7 @@ function renderCrew(){
  $('#crewfilters').innerHTML=f('ALL','Everyone')+f('CPT','Captains')+f('FO','First officers')+f('CC','Cabin crew');
  const list=state.crew.filter(c=>ui.crewRank==='ALL'||c.rank===ui.crewRank);
  $('#crewlist').innerHTML='<thead><tr><th>Name</th><th>Position</th><th>Aircraft</th><th>Base</th><th>Email</th><th>Licence</th><th>Medical</th><th>Recurrent</th><th>Trips</th><th>Block</th><th>Leave</th><th>Sim</th><th>Standby</th><th></th></tr></thead><tbody>'+
- (list.map(c=>{const l=flightsOf(c),av=Object.values(c.acts||{}),cnt=t=>av.filter(a=>a.type===t).length,ds=docStatus(c);return `<tr><td>${esc(c.name)}</td><td>${RANK[c.rank]}</td><td>${esc(typeLabel(c.type))}</td><td>${esc(c.base)}</td><td>${c.email?esc(c.email):'<span class="noemail">None</span>'}</td>${ds.map(d=>`<td class="${d.st==='expired'||d.st==='period'?'docbad':d.st==='soon'?'docwarn':''}">${d.v?fmtDate(d.v):'<span class="noemail">Not set</span>'}</td>`).join('')}<td>${l.length}</td><td>${hrs(l.reduce((t,a)=>t+a.block,0))}</td><td>${cnt('leave')}</td><td>${cnt('sim')}</td><td>${cnt('sb')}</td><td class="acts"><button class="btn ghost small" data-editc="${c.id}">Edit</button> <button class="btn danger small" data-del="${c.id}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="14">No crew yet.</td></tr>')+'</tbody>';
+ (list.map(c=>{const l=flightsOf(c),av=Object.entries(c.acts||{}).filter(([k])=>inMonth(k)).map(x=>x[1]),cnt=t=>av.filter(a=>a.type===t).length,ds=docStatus(c);return `<tr><td>${esc(c.name)}</td><td>${RANK[c.rank]}</td><td>${esc(typeLabel(c.type))}</td><td>${esc(c.base)}</td><td>${c.email?esc(c.email):'<span class="noemail">None</span>'}</td>${ds.map(d=>`<td class="${d.st==='expired'||d.st==='period'?'docbad':d.st==='soon'?'docwarn':''}">${d.v?fmtDate(d.v):'<span class="noemail">Not set</span>'}</td>`).join('')}<td>${l.length}</td><td>${hrs(l.reduce((t,a)=>t+a.block,0))}</td><td>${cnt('leave')}</td><td>${cnt('sim')}</td><td>${cnt('sb')}</td><td class="acts"><button class="btn ghost small" data-editc="${c.id}">Edit</button> <button class="btn danger small" data-del="${c.id}">Remove</button></td></tr>`}).join('')||'<tr><td colspan="14">No crew yet.</td></tr>')+'</tbody>';
 }
 function renderRules(){
  const r=state.rules,f=(k,t,hint,min,max)=>`<label>${t}<input type="number" data-rule="${k}" value="${r[k]}" min="${min}" max="${max}" step="1"><small>${hint}</small></label>`;
@@ -696,10 +733,11 @@ function renderRules(){
   f('maxDutyDay','Max duty in one day (hours)','Flights longer than this cannot be saved',6,18)+
   f('minRest','Minimum rest (hours)','Between duties, including night stops away from base',8,24)+
   f('maxDuty7','Max duty in any 7 days (hours)','Rolling window',30,80)+
-  f('maxBlock','Max block in the 14-day period (hours)','50h is roughly 100h per 28 days',20,100)+
+  f('maxBlockM','Max block in a calendar month (hours)','Typical limit is 100h in 28 days',20,200)+
   f('maxConsec','Max days on duty in a row','Night stop days count as duty days',2,7)+
-  f('minDaysOff','Minimum days off in the period','Leave counts as a day off',1,10)+
-  f('maxOffWeek','Maximum days off in a week (Mon to Sun)','Leave is not counted. Extra days are filled with flights, then standby. 7 turns this off.',1,7);
+  f('minDaysOffM','Minimum days off in a calendar month','Leave counts as a day off',1,20)+
+  f('maxOffWeek','Maximum days off in a week (Mon to Sun)','Leave is not counted. Short weeks at the start or end of a month get a fair share. Extra days are filled with flights, then standby. 7 turns this off.',1,7)+
+  `<label>Local time is GMT plus (hours)<input type="number" data-tzoff="1" value="${state.tz.offset/60}" min="-12" max="14" step="0.5"><small>Malawi is GMT+2. Times are shown and entered in ${state.tz.gmt?'GMT':'local time'}; switch at the top of the app.</small></label>`;
 }
 function renderDatalists(){
  const apts=new Set(['LLW','BLZ','MZU','JNB','LUN','HRE','DAR','NBO','ADD','CPT','DXB','MPM','LAD']);
@@ -708,7 +746,7 @@ function renderDatalists(){
  $('#bases').innerHTML=bases().map(b=>`<option value="${esc(b)}">`).join('');
 }
 function render(){
- $('#period').textContent='Two weeks, '+longDay(0)+' to '+longDay(DAYS-1)+' 2026. The planner assigns every seat within your duty limits, evens out hours, and explains each choice.';
+ $('#period').textContent='Roster for '+PERIOD+'. All times '+(state.tz.gmt?'GMT':'local (GMT+'+state.tz.offset/60+')')+'. The planner assigns every seat within your duty limits, evens out hours, and explains each choice.';renderMonthBar();
  renderDatalists();renderSummary();renderFilters();renderGrid();renderPatterns();renderFleet();renderCrew();renderRules();renderShare();
 }
 
@@ -718,11 +756,11 @@ function openSeat(s){
  const i=s.inst,crewOn=R.seats.filter(x=>x.inst===i&&x.crew),multi=i.days.length>1;
  let rows='';
  i.d.days.forEach((x,k)=>{
-  x.legs.forEach((l,j)=>rows+=`<tr>${multi?`<td>${j?'':dayLabel(i.day+k)}</td>`:''}<td>${esc(l.from)}</td><td>${esc(l.to)}</td><td>${l.dep}</td><td>${l.arr}</td></tr>`);
+  x.legs.forEach((l,j)=>rows+=`<tr>${multi?`<td>${j?'':dayLabel(i.day+k)}</td>`:''}<td>${esc(l.from)}</td><td>${esc(l.to)}</td><td>${ts(l.dep)}</td><td>${ts(l.arr)}</td></tr>`);
   if(k<i.d.days.length-1)rows+=`<tr><td colspan="${multi?5:4}" class="reason">Night stop at ${esc(x.end)}, ${dur(i.d.days[k+1].rep-x.rel)} rest</td></tr>`;
  });
  let h=`<button class="btn ghost small close" data-close>Close</button><h3>${esc(i.code)} ${esc(i.route)}</h3>
- <p class="note">${longDay(i.day)}${multi?', '+i.days.length+'-day trip':''}. ${esc(i.type)} from ${esc(i.base)}. Report ${hhmm(i.start)}, final release ${hhmm(i.end)}${multi?' on '+dayLabel(i.days[i.days.length-1]):''}. Block ${dur(i.block*60)}.</p>
+ <p class="note">${longDay(i.day)}${multi?', '+i.days.length+'-day trip':''}. ${esc(i.type)} from ${esc(i.base)}. Report ${tt(i.start)}, final release ${tt(i.end)}${multi?' on '+dayLabel(i.days[i.days.length-1]):''}. Block ${dur(i.block*60)}.</p>
  <div class="tablewrap"><table class="list"><thead><tr>${multi?'<th>Day</th>':''}<th>From</th><th>To</th><th>Departs</th><th>Arrives</th></tr></thead><tbody>${rows}</tbody></table></div>`;
  if(s.crew){
   h+=`<h4>${RANK[s.rank]}: ${esc(s.crew.name)}</h4>`;
@@ -766,22 +804,22 @@ function openDay(c,d){
   <p class="note">${longDay(d)}. ${RANK[c.rank]}, ${esc(typeLabel(c.type))}, ${esc(c.base)}.</p>${di?`<p class="docbad">${esc(di)}</p>`:''}${autoNote}
   <fieldset><legend>Set this day as</legend><div class="days">${chip('off','Day off')}${a&&a.type==='off'?chip('auto','Let planner decide'):''}${chip('leave','Leave')}${chip('sim','Simulator training')}${chip('sb','Standby')}</div></fieldset>
   <div id="acttimes" ${ui.dayDraft.type==='sim'||ui.dayDraft.type==='sb'?'':'hidden'}><div class="form" style="margin-top:10px">
-   <label>Starts<input type="time" id="actstart" value="${esc(t.start)}"></label><label>Ends<input type="time" id="actend" value="${esc(t.end)}"></label>
+   <label>Starts<input type="time" id="actstart" value="${esc(ts(t.start))}"></label><label>Ends<input type="time" id="actend" value="${esc(ts(t.end))}"></label>
    <label style="flex:1 1 200px">Note<input id="actnote" value="${esc(a&&a.note||'')}" placeholder="e.g. OPC, JNB simulator"></label></div>
    <p class="note">Simulator training and standby count as duty for rest and duty-hour limits.</p></div>
   <div class="form" style="margin-top:10px"><label>Number of days<input type="number" id="actdays" min="1" max="${DAYS-d}" value="1"></label><span class="note" style="margin:0">Applies to ${dayLabel(d)} and the days after it.</span></div>
   <ul class="errs" id="acterr"></ul>
   <div class="actions"><button class="btn" id="actsave">Save</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
   <h4>Or put ${esc(c.name.split(' ')[0])} on a flight</h4>
-  ${trips.length?`<div class="optlist">${trips.map(o=>`<button class="btn ghost" data-putflight="${esc(o.i.id)}">${esc(o.i.code)} ${esc(o.i.route)}, ${hhmm(o.i.start)}–${hhmm(o.i.end)} <span class="${o.r?'docbad':'reason'}">${o.r?esc(o.r):'legal'}</span></button>`).join('')}</div>`:'<p class="note">No flights start on this day with a '+RANK[c.rank].toLowerCase()+' seat.</p>'}`;
+  ${trips.length?`<div class="optlist">${trips.map(o=>`<button class="btn ghost" data-putflight="${esc(o.i.id)}">${esc(o.i.code)} ${esc(o.i.route)}, ${tt(o.i.start)}–${tt(o.i.end)} <span class="${o.r?'docbad':'reason'}">${o.r?esc(o.r):'legal'}</span></button>`).join('')}</div>`:'<p class="note">No flights start on this day with a '+RANK[c.rank].toLowerCase()+' seat.</p>'}`;
  dlg.showModal();
 }
 function saveDay(){
  const {c,d,type}=ui.dayDraft,n=Math.max(1,Math.min(DAYS-d,Math.round(+$('#actdays').value||1)));
  let start='',end='',note='';
- if(type==='sim'||type==='sb'){start=$('#actstart').value;end=$('#actend').value;note=$('#actnote').value.trim();
+ if(type==='sim'||type==='sb'){start=toStore($('#actstart').value);end=toStore($('#actend').value);note=$('#actnote').value.trim();
   if(!validTime(start)||!validTime(end)){$('#acterr').innerHTML='<li>Set a start and end time.</li>';return}}
- for(let k=0;k<n;k++){const day=d+k;if(type==='auto')delete c.acts[day];else if(type==='off'){if(R.autoSb.has(c.id+'|'+day)||(actOf(c,day)&&actOf(c,day).type==='off'))c.acts[day]={type:'off'};else delete c.acts[day]}else c.acts[day]=type==='leave'?{type}:{type,start,end,note}}
+ for(let k=0;k<n;k++){const day=d+k,key=ymd(day);if(type==='auto')delete c.acts[key];else if(type==='off'){if(R.autoSb.has(c.id+'|'+day)||(actOf(c,day)&&actOf(c,day).type==='off'))c.acts[key]={type:'off'};else delete c.acts[key]}else c.acts[key]=type==='leave'?{type}:{type,start,end,note}}
  dlg.close();
  commit((type==='off'?'Day off set for ':type==='auto'?'Planner will decide for ':ACT[type].label+' set for ')+c.name+', '+dayLabel(d)+(n>1?' to '+dayLabel(d+n-1):'')+'. Roster rebuilt.');
 }
@@ -798,7 +836,7 @@ function openFlightEditor(p,isNew){
   <fieldset><legend>Starts on</legend><div class="days">${DOW.map((d,k)=>`<button type="button" class="chip" data-pdow="${k}" aria-pressed="${draft.dow.includes(k)}">${d}</button>`).join('')}
    <button type="button" class="chip" data-pdow="all">Every day</button></div></fieldset>
   <h4>Legs</h4>
-  <p class="note">Enter local times. An arrival earlier than the departure is read as the next day. Use Add stop to route a leg via another airport. To end the day away from base, finish the last leg there and tap Night stop.</p>
+  <p class="note">Enter times in ${tzName()}. An arrival earlier than the departure is read as the next day. Use Add stop to route a leg via another airport. To end the day away from base, finish the last leg there and tap Night stop.</p>
   <div id="legs"></div>
   <div class="actions" style="margin-top:10px">
    <button type="button" class="btn ghost small" id="addleg">Add leg</button>
@@ -820,8 +858,8 @@ function renderLegs(){
    <span class="ln">Leg ${i+1}</span>
    <label>From<input class="code" data-dd="${k}" data-leg="${i}" data-k="from" list="airports" maxlength="4" value="${esc(l.from)}"></label>
    <label>To<input class="code" data-dd="${k}" data-leg="${i}" data-k="to" list="airports" maxlength="4" value="${esc(l.to)}"></label>
-   <label>Departs<input type="time" data-dd="${k}" data-leg="${i}" data-k="dep" value="${esc(l.dep)}"></label>
-   <label>Arrives<input type="time" data-dd="${k}" data-leg="${i}" data-k="arr" value="${esc(l.arr)}"></label>
+   <label>Departs<input type="time" data-dd="${k}" data-leg="${i}" data-k="dep" value="${esc(ts(l.dep))}"></label>
+   <label>Arrives<input type="time" data-dd="${k}" data-leg="${i}" data-k="arr" value="${esc(ts(l.arr))}"></label>
    <div class="legacts"><button type="button" class="btn ghost small" data-splitleg="${k}|${i}" aria-label="Add a stop on leg ${i+1}">Add stop</button><button type="button" class="btn danger small" data-rmleg="${k}|${i}" aria-label="Remove leg ${i+1}">Remove</button></div>
   </div>${i<legs.length-1?`<div class="ground"><span id="gnd-${k}-${i}"></span>${l.from!==legs[i+1].to?`<button type="button" class="btn ghost small" data-mergeleg="${k}|${i}">Remove stop</button>`:''}</div>`:''}`).join('')||'<p class="note">No legs yet.</p>';
   if(k<draft.duties.length-1)h+=`<div class="nightstop" id="ns-${k}"></div>`;
@@ -833,7 +871,7 @@ function updatePSum(){
  const base=baseOf(draft),lastDay=draft.duties[draft.duties.length-1]||[],lastLeg=lastDay[lastDay.length-1];
  if(v.d){
   const d=v.d,multi=d.days.length>1;
-  $('#psum').innerHTML=`Base <b>${esc(d.base)}</b>. `+d.days.map((x,k)=>`${multi?'<b>Day '+(k+1)+':</b> ':''}report <b>${hhmm(x.rep)}</b>, release <b>${hhmm(x.rel)}</b>, duty <b>${dur(x.rel-x.rep)}</b>.`+(k<d.days.length-1?` Night stop at <b>${esc(x.end)}</b>, rest <b>${dur(d.days[k+1].rep-x.rel)}</b>.`:'')).join(' ')+
+  $('#psum').innerHTML=`Base <b>${esc(d.base)}</b>. `+d.days.map((x,k)=>`${multi?'<b>Day '+(k+1)+':</b> ':''}report <b>${tt(x.rep)}</b>, release <b>${tt(x.rel)}</b>, duty <b>${dur(x.rel-x.rep)}</b>.`+(k<d.days.length-1?` Night stop at <b>${esc(x.end)}</b>, rest <b>${dur(d.days[k+1].rep-x.rel)}</b>.`:'')).join(' ')+
    ` Total block <b>${dur(d.block*60)}</b>. Needs 2 pilots and ${f?f.cc:0} cabin crew on the ${esc(p.type)}.`+v.warn.map(w=>`<div class="warnline">${esc(w)}</div>`).join('');
  }else $('#psum').innerHTML='Complete the legs to see report, release and duty times.';
  const away=lastLeg&&/^[A-Z]{3,4}$/.test(lastLeg.to)&&base&&lastLeg.to!==base;
@@ -871,23 +909,22 @@ function askConfirm(title,msg,label,fn){
  $('#dlgbody').innerHTML=`<h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="actions" style="margin-top:16px"><button class="btn danger-solid" id="confirmyes">${esc(label)}</button><button class="btn ghost" data-close>Cancel</button></div>`;
  dlg.showModal();$('#confirmyes').focus();
 }
-let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3000)}
+let toastTimer;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000)}
 const commit=msg=>{save();rebuild();if(msg)toast(msg)};
 const kI=v=>v.split('|').map(Number);
 const legDur=l=>validTime(l.dep)&&validTime(l.arr)?((toMin(l.arr)-toMin(l.dep))+1440)%1440:null;
 
 /* ---------- Print, files and email ---------- */
-const PERIOD=dayDate(0).getDate()+' to '+longDay(DAYS-1).replace(/^\w+ /,'')+' 2026';
 const shortDate=d=>dayDate(d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-const legLines=x=>x.legs.map(l=>l.from+' '+l.dep+' → '+l.to+' '+l.arr);
+const legLines=x=>x.legs.map(l=>l.from+' '+ts(l.dep)+' → '+l.to+' '+ts(l.arr));
 function crewDays(c){
  const out=Array.from({length:DAYS},(_,d)=>{const a=actOf(c,d);if(R&&R.autoSb.get(c.id+'|'+d))return {t:'sb',a:{type:'sb',start:ACT.sb.start,end:ACT.sb.end,note:'Planned standby'},auto:true};return a&&a.type!=='off'?{t:a.type,a}:{t:'off'}});
  for(const inst of flightsOf(c))inst.days.forEach((d,k)=>{if(d<DAYS){const x=inst.d.days[k],b=inst.day*1440;out[d]={t:'duty',inst,k,x,rep:b+x.rep,rel:b+x.rel,ns:k<inst.days.length-1?x.end:null}}});
  return out;
 }
 function stats(c){const days=crewDays(c),n=t=>days.filter(x=>x.t===t).length;return {duties:n('duty'),leave:n('leave'),sim:n('sim'),sb:n('sb'),off:n('off'),block:flightsOf(c).reduce((t,a)=>t+a.block,0)}}
-const actText=x=>x.t==='leave'?'Leave':x.t==='sim'?'Simulator training '+x.a.start+'–'+x.a.end+(x.a.note?', '+x.a.note:''):x.t==='sb'?'Standby '+x.a.start+'–'+x.a.end+(x.a.note?', '+x.a.note:''):'Day off';
+const actText=x=>x.t==='leave'?'Leave':x.t==='sim'?'Simulator training '+ts(x.a.start)+'–'+ts(x.a.end)+(x.a.note?', '+x.a.note:''):x.t==='sb'?'Standby '+ts(x.a.start)+'–'+ts(x.a.end)+(x.a.note?', '+x.a.note:''):'Day off';
 const totalsText=st=>`Duty days ${st.duties}. Block time ${dur(st.block*60)}. Simulator ${st.sim}. Standby ${st.sb}. Days off ${st.off}. Leave ${st.leave}.`;
 const PRINT_CSS=`.pr{font:11px/1.35 -apple-system,system-ui,"Segoe UI",Roboto,Arial,sans-serif;color:#000;background:#fff}
 .pr h1{font-size:18px;margin:0 0 2px}.pr .lg{float:right;height:46px;margin:0 0 6px 12px}.pr .sub{margin:0 0 10px;color:#333}
@@ -898,38 +935,38 @@ const PRINT_CSS=`.pr{font:11px/1.35 -apple-system,system-ui,"Segoe UI",Roboto,Ar
 function printBody(kind,list){
  const stamp=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
  if(kind==='full'){
-  let h=`<img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${AIRLINE} crew roster</h1><p class="sub">${esc(PERIOD)}. Printed ${stamp}. Times are local.</p><table><thead><tr><th>Crew</th>`;
+  let h=`<img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${AIRLINE} crew roster</h1><p class="sub">${esc(PERIOD)}. Printed ${stamp}. ${timesNote()}</p><table><thead><tr><th>Crew</th>`;
   for(let d=0;d<DAYS;d++)h+=`<th>${dayLabel(d)}</th>`;
   h+='<th>Block</th></tr></thead><tbody>';
   for(const c of list){
    h+=`<tr><td><b>${esc(c.name)}</b><br>${c.rank} ${esc(typeLabel(c.type))} ${esc(c.base)}</td>`;
-   crewDays(c).forEach(x=>{h+=x.t==='duty'?`<td><b>${esc(x.inst.code)}</b><br>${hhmm(x.rep)}–${hhmm(x.rel)}${x.ns?`<br><span class="ns">NS ${esc(x.ns)}</span>`:''}</td>`:x.t==='off'?'<td></td>':x.t==='leave'?'<td class="lv">Leave</td>':`<td class="lv">${ACT[x.t].short}<br>${x.a.start}–${x.a.end}</td>`});
+   crewDays(c).forEach(x=>{h+=x.t==='duty'?`<td><b>${esc(x.inst.code)}</b><br>${tt(x.rep)}–${tt(x.rel)}${x.ns?`<br><span class="ns">NS ${esc(x.ns)}</span>`:''}</td>`:x.t==='off'?'<td></td>':x.t==='leave'?'<td class="lv">Leave</td>':`<td class="lv">${ACT[x.t].short}<br>${ts(x.a.start)}–${ts(x.a.end)}</td>`});
    h+=`<td>${hrs(stats(c).block)}</td></tr>`;
   }
   return h+'</tbody></table>';
  }
  return list.map(c=>{
   const st=stats(c);
-  let h=`<section class="page"><img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${esc(c.name)}</h1><p class="sub">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, based ${esc(c.base)}. Roster ${esc(PERIOD)}. Printed ${stamp}. Times are local.</p>
+  let h=`<section class="page"><img class="lg" src="data:image/jpeg;base64,${LOGO_JPG}" alt="${AIRLINE}"><h1>${esc(c.name)}</h1><p class="sub">${RANK[c.rank]}, ${esc(typeLabel(c.type))}, based ${esc(c.base)}. Roster ${esc(PERIOD)}. Printed ${stamp}. ${timesNote()}</p>
    <table><thead><tr><th>Date</th><th>Duty</th><th>Report</th><th>Flights</th><th>Release</th></tr></thead><tbody>`;
   crewDays(c).forEach((x,d)=>{
-   if(x.t==='duty')h+=`<tr><td>${shortDate(d)}</td><td><b>${esc(x.inst.code)}</b><br>${esc(x.inst.type)}</td><td>${hhmm(x.rep)}</td><td>${legLines(x.x).map(esc).join('<br>')}</td><td>${hhmm(x.rel)}${x.ns?`<br><span class="ns">Night stop ${esc(x.ns)}</span>`:''}</td></tr>`;
+   if(x.t==='duty')h+=`<tr><td>${shortDate(d)}</td><td><b>${esc(x.inst.code)}</b><br>${esc(x.inst.type)}</td><td>${tt(x.rep)}</td><td>${legLines(x.x).map(esc).join('<br>')}</td><td>${tt(x.rel)}${x.ns?`<br><span class="ns">Night stop ${esc(x.ns)}</span>`:''}</td></tr>`;
    else h+=`<tr><td>${shortDate(d)}</td><td class="${x.t!=='off'?'lv':''}" colspan="4">${esc(actText(x))}</td></tr>`;
   });
   return h+`</tbody></table><p class="tot">${totalsText(st)}</p></section>`;
  }).join('');
 }
-const printDoc=(kind,list,title)=>`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>body{margin:16px}${PRINT_CSS}@page{${kind==='full'?'size:A4 landscape;':''}margin:10mm}</style></head><body class="pr">${printBody(kind,list)}</body></html>`;
+const printDoc=(kind,list,title)=>`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>body{margin:16px}${PRINT_CSS}@page{${kind==='full'?'size:A4 landscape;':''}margin:10mm}${kind==='full'&&DAYS>16?'.pr table{font-size:7px}.pr th,.pr td{padding:2px}':''}</style></head><body class="pr">${printBody(kind,list)}</body></html>`;
 function doPrint(kind,list){
  if(!list.length){toast('No crew to print.');return}
  if(dlg.open)dlg.close();
- $('#printarea').innerHTML=`<style>${PRINT_CSS}@page{${kind==='full'?'size:A4 landscape;':''}margin:10mm}</style><div class="pr">${printBody(kind,list)}</div>`;
+ $('#printarea').innerHTML=`<style>${PRINT_CSS}@page{${kind==='full'?'size:A4 landscape;':''}margin:10mm}${kind==='full'&&DAYS>16?'.pr table{font-size:7px}.pr th,.pr td{padding:2px}':''}</style><div class="pr">${printBody(kind,list)}</div>`;
  setTimeout(()=>{try{window.print()}catch(e){toast('Printing is not available here. Use Download printable copy.')}},60);
 }
 function csvAll(){
  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
  const rows=[['Crew','Position','Aircraft','Base','Email',...Array.from({length:DAYS},(_,d)=>shortDate(d)),'Block hours']];
- for(const c of state.crew)rows.push([c.name,RANK[c.rank],typeLabel(c.type),c.base,c.email||'',...crewDays(c).map(x=>x.t==='duty'?x.inst.code+' '+hhmm(x.rep)+'-'+hhmm(x.rel)+(x.ns?' night stop '+x.ns:''):x.t==='off'?'':actText(x)),(Math.round(stats(c).block*10)/10)]);
+ for(const c of state.crew)rows.push([c.name,RANK[c.rank],typeLabel(c.type),c.base,c.email||'',...crewDays(c).map(x=>x.t==='duty'?x.inst.code+' '+tt(x.rep)+'-'+tt(x.rel)+(x.ns?' night stop '+x.ns:''):x.t==='off'?'':actText(x)),(Math.round(stats(c).block*10)/10)]);
  return '\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n');
 }
 function icsFor(c){
@@ -937,22 +974,22 @@ function icsFor(c){
  const t=abs=>{const di=Math.floor(abs/1440),m=((abs%1440)+1440)%1440,dt=dayDate(di);return ''+dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+'T'+pad(Math.floor(m/60))+pad(m%60)+'00'};
  const now=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
  const out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Malawi Airlines Roster Builder//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+e('Roster '+c.name)];
- for(const [k,a] of [...Object.entries(c.acts||{}),...[...R.autoSb.entries()].filter(([key])=>key.startsWith(c.id+'|')).map(([key])=>[key.split('|')[1],{type:'sb',start:ACT.sb.start,end:ACT.sb.end,note:'Planned standby'}])]){const d=+k;if(!a||a.type==='leave'||a.type==='off'||d<0||d>=DAYS)continue;const s0=d*1440+toMin(a.start);let e0=d*1440+toMin(a.end);if(e0<=s0)e0+=1440;
-  out.push('BEGIN:VEVENT','UID:act-'+c.id+'-'+d+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(s0),'DTEND:'+t(e0),'SUMMARY:'+e(ACT[a.type].label),'DESCRIPTION:'+e(a.note||''),'END:VEVENT')}
+ for(const [k,a] of [...Object.entries(c.acts||{}),...[...R.autoSb.entries()].filter(([key])=>key.startsWith(c.id+'|')).map(([key])=>[ymd(+key.split('|')[1]),{type:'sb',start:ACT.sb.start,end:ACT.sb.end,note:'Planned standby'}])]){const d=dayOfDate(k);if(!a||a.type==='leave'||a.type==='off'||d===null||d<0||d>=DAYS)continue;const s0=d*1440+toMin(a.start);let e0=d*1440+toMin(a.end);if(e0<=s0)e0+=1440;
+  out.push('BEGIN:VEVENT','UID:act-'+c.id+'-'+d+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(s0-state.tz.offset)+'Z','DTEND:'+t(e0-state.tz.offset)+'Z','SUMMARY:'+e(ACT[a.type].label),'DESCRIPTION:'+e(a.note||''),'END:VEVENT')}
  for(const inst of flightsOf(c))inst.d.days.forEach((x,k)=>{const b=inst.day*1440;
-  out.push('BEGIN:VEVENT','UID:'+inst.id+'-'+k+'-'+c.id+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(b+x.rep),'DTEND:'+t(b+x.rel),
+  out.push('BEGIN:VEVENT','UID:'+inst.id+'-'+k+'-'+c.id+'@crew-roster','DTSTAMP:'+now,'DTSTART:'+t(b+x.rep-state.tz.offset)+'Z','DTEND:'+t(b+x.rel-state.tz.offset)+'Z',
    'SUMMARY:'+e(inst.code+' '+legRoute(x.legs)),'LOCATION:'+e(x.legs[0].from),
-   'DESCRIPTION:'+e('Report '+hhmm(b+x.rep)+'\n'+legLines(x).join('\n')+'\nRelease '+hhmm(b+x.rel)+(k<inst.days.length-1?'\nNight stop '+x.end:'')),'END:VEVENT')});
+   'DESCRIPTION:'+e('Report '+tt(b+x.rep)+'\n'+legLines(x).join('\n')+'\nRelease '+tt(b+x.rel)+(k<inst.days.length-1?'\nNight stop '+x.end:'')),'END:VEVENT')});
  out.push('END:VCALENDAR');return out.join('\r\n');
 }
 function personText(c){
  return `Hello ${c.name.split(' ')[0]},\n\nPlease find your roster for ${PERIOD} attached as a PDF.\n\n${AIRLINE} Crew Control`;
 }
 function fullText(){
- let t=`${AIRLINE} crew roster, ${PERIOD}. Times are local.\n\n`;
+ let t=`${AIRLINE} crew roster, ${PERIOD}. ${timesNote()}\n\n`;
  for(const c of state.crew){
   t+=`${c.name} (${RANK[c.rank]}, ${typeLabel(c.type)}, ${c.base})\n`;
-  const lines=[];crewDays(c).forEach((x,d)=>{if(x.t==='duty')lines.push(`  ${shortDate(d)}  ${x.inst.code}  ${hhmm(x.rep)}-${hhmm(x.rel)}  ${x.inst.d.days[x.k].legs.length?legRoute(x.x.legs):''}${x.ns?'  night stop '+x.ns:''}`);else if(x.t!=='off')lines.push(`  ${shortDate(d)}  ${actText(x)}`)});
+  const lines=[];crewDays(c).forEach((x,d)=>{if(x.t==='duty')lines.push(`  ${shortDate(d)}  ${x.inst.code}  ${tt(x.rep)}-${tt(x.rel)}  ${x.inst.d.days[x.k].legs.length?legRoute(x.x.legs):''}${x.ns?'  night stop '+x.ns:''}`);else if(x.t!=='off')lines.push(`  ${shortDate(d)}  ${actText(x)}`)});
   t+=(lines.join('\n')||'  No duties')+'\n\n';
  }
  return t;
@@ -983,12 +1020,12 @@ function pdfPersonPages(c){
  const pages=[],M=40,TW=515,cols=[M,M+80,M+152,M+204,M+404];let cs='',y=0;
  const T=(x,yy,v,size,bold,gray)=>{cs+=`BT ${gray||0} g /${bold?'F2':'F1'} ${size} Tf ${x} ${yy} Td (${pdfStr(v)}) Tj ET\n`};
  const stamp=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
- const header=cont=>{cs='q 74 0 0 52 481 768 cm /Im1 Do Q\n';T(M,796,c.name+(cont?' (continued)':''),18,true);T(M,778,`${RANK[c.rank]}, ${typeLabel(c.type)}, based ${c.base}. Roster ${PERIOD}. Times are local.`,10,false,0.3);
+ const header=cont=>{cs='q 74 0 0 52 481 768 cm /Im1 Do Q\n';T(M,796,c.name+(cont?' (continued)':''),18,true);T(M,778,`${RANK[c.rank]}, ${typeLabel(c.type)}, based ${c.base}. Roster ${PERIOD}. ${timesNote()}`,10,false,0.3);
   y=760;cs+=`0.9 g ${M} ${y-18} ${TW} 18 re f\n`;['Date','Duty','Report','Flights','Release'].forEach((h,i)=>T(cols[i]+4,y-13,h,9.5,true));y-=18};
  const footer=()=>T(M,28,AIRLINE+' crew roster, printed '+stamp,8,false,0.45);
  header(false);
  crewDays(c).forEach((x,d)=>{
-  const cells=x.t==='duty'?[[shortDate(d)],[x.inst.code,x.inst.type],[hhmm(x.rep)],legLines(x.x),[hhmm(x.rel)].concat(x.ns?['Night stop '+x.ns]:[])]:(x.t==='sim'||x.t==='sb')?[[shortDate(d)],[x.t==='sim'?'SIM':'Standby'],[x.a.start],[x.a.note||ACT[x.t].label],[x.a.end]]:[[shortDate(d)],[x.t==='leave'?'Leave':'Day off'],[],[],[]];
+  const cells=x.t==='duty'?[[shortDate(d)],[x.inst.code,x.inst.type],[tt(x.rep)],legLines(x.x),[tt(x.rel)].concat(x.ns?['Night stop '+x.ns]:[])]:(x.t==='sim'||x.t==='sb')?[[shortDate(d)],[x.t==='sim'?'SIM':'Standby'],[ts(x.a.start)],[x.a.note||ACT[x.t].label],[ts(x.a.end)]]:[[shortDate(d)],[x.t==='leave'?'Leave':'Day off'],[],[],[]];
   const h=Math.max(...cells.map(a=>a.length))*12+8;
   if(y-h<60){footer();pages.push(cs);header(true)}
   if(x.t!=='off'&&x.t!=='duty')cs+=`${x.t==='leave'?0.95:0.91} g ${M} ${y-h} ${TW} ${h-0.8} re f\n`;
@@ -1100,7 +1137,7 @@ const IMP={
   tpl:'name,position,aircraft,base,email,licence_expiry,medical_expiry,recurrent_expiry\nTiwonge Banda,Captain,Q400,LLW,tiwonge.banda@example.com,2027-03-31,2027-01-15,2026-12-01\nGrace Phiri,Cabin crew,All,BLZ,grace.phiri@example.com,31/05/2027,28/02/2027,30/04/2027\n'},
  flights:{fmt:'One row per leg. Columns: code, aircraft, days (Daily, Mon Wed Fri, Mon-Fri or 135), trip_day (1, or 2 for the day after a night stop), from, to, departs, arrives. Flights are matched by code.',
   tpl:'code,aircraft,days,trip_day,from,to,departs,arrives\nLZ1,Q400,Mon Wed Fri,1,LLW,MZU,07:00,07:55\nLZ1,Q400,Mon Wed Fri,1,MZU,LLW,08:35,09:30\nLA2,B737,Sat,1,LLW,ADD,15:00,19:10\nLA2,B737,Sat,2,ADD,LLW,10:00,14:10\n'},
- acts:{fmt:'Columns: name, date, until (optional, for several days), type (leave, sim or standby), start, end, note. Only dates in this roster period are used.',
+ acts:{fmt:'Columns: name, date, until (optional, for several days), type (leave, sim or standby), start, end, note. Dates in any month are kept, so you can import leave plans for the whole year.',
   tpl:'name,date,until,type,start,end,note\nTiwonge Banda,2026-10-06,2026-10-08,leave,,,\nTiwonge Banda,2026-10-12,,sim,08:00,16:00,OPC JNB simulator\nGrace Phiri,2026-10-14,,standby,05:00,17:00,Airport standby\n'}
 };
 function parseCSV(t){
@@ -1174,7 +1211,7 @@ function prepFlights(rows,mode){
  const byCode=new Map();
  data.forEach((r,n)=>{const row=n+2,g=k=>ix[k]!==undefined?(r[ix[k]]||'').trim():'';
   const code=g('code').toUpperCase();if(!code){errs.push(`Row ${row}: no flight code, skipped`);return}
-  const dep=parseTime(g('dep')),arr=parseTime(g('arr'));if(!dep||!arr){errs.push(`Row ${row} (${code}): times must look like 06:45, skipped`);return}
+  const dep=toStore(parseTime(g('dep'))),arr=toStore(parseTime(g('arr')));if(!dep||!arr){errs.push(`Row ${row} (${code}): times must look like 06:45, skipped`);return}
   let f=byCode.get(code);if(!f){f={code,type:g('type').toUpperCase().replace(/\s+/g,' '),dow:parseDays(g('days')),duties:[]};byCode.set(code,f)}
   if(!f.type&&g('type'))f.type=g('type').toUpperCase();
   const td=Math.max(1,Math.min(MAXTRIP,parseInt(g('day'),10)||1))-1;while(f.duties.length<=td)f.duties.push([]);
@@ -1206,16 +1243,16 @@ function prepActs(rows,mode){
   const c=state.crew.find(x=>x.name.toLowerCase()===g('name').toLowerCase());if(!c){errs.push(`Row ${row}: "${g('name')}" is not in the crew list, skipped`);return}
   const type=parseAct(g('type'));if(!type){errs.push(`Row ${row} (${c.name}): type "${g('type')}" not recognised, skipped`);return}
   const d1=parseDate(g('date')),d2=g('until')?parseDate(g('until')):d1;if(!d1||!d2){errs.push(`Row ${row} (${c.name}): date not recognised, skipped`);return}
-  let a={type};if(type==='sim'||type==='sb'){const st=g('start')?parseTime(g('start')):ACT[type].start,en=g('end')?parseTime(g('end')):ACT[type].end;if(!st||!en){errs.push(`Row ${row} (${c.name}): times must look like 08:00, skipped`);return}a={type,start:st,end:en,note:g('note')}}
-  const a1=dayOfDate(d1),a2=dayOfDate(d2);
-  for(let d=a1;d<=a2&&d-a1<366;d++){if(d<0||d>=DAYS){outside++;continue}items.push({c,d,a})}
+  let a={type};if(type==='sim'||type==='sb'){const st=g('start')?toStore(parseTime(g('start'))):ACT[type].start,en=g('end')?toStore(parseTime(g('end'))):ACT[type].end;if(!st||!en){errs.push(`Row ${row} (${c.name}): times must look like 08:00, skipped`);return}a={type,start:st,end:en,note:g('note')}}
+  const [y1,m1,x1]=d1.split('-').map(Number),last=new Date(...d2.split('-').map((v,i)=>i===1?v-1:+v));
+  for(let t=new Date(y1,m1-1,x1),guard=0;t<=last&&guard<400;t.setDate(t.getDate()+1),guard++)items.push({c,key:t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'),a});
  });
  const cnt=t=>items.filter(i=>i.a.type===t).length;
- return {items,errs,summary:`${items.length} days ready to import: ${cnt('leave')} leave, ${cnt('sim')} simulator, ${cnt('sb')} standby${cnt('off')?', '+cnt('off')+' cleared':''}.`+(outside?` ${outside} days fall outside this roster (${PERIOD}) and will be ignored.`:'')+(mode==='replace'?' All current leave, simulator and standby days will be replaced.':''),
-  apply(){if(mode==='replace')state.crew.forEach(c=>c.acts={});items.forEach(({c,d,a})=>{if(a.type==='off')delete c.acts[d];else c.acts[d]={...a}});return items.length+' days imported'}};
+ return {items,errs,summary:`${items.length} days ready to import: ${cnt('leave')} leave, ${cnt('sim')} simulator, ${cnt('sb')} standby${cnt('off')?', '+cnt('off')+' cleared':''}.`+(mode==='replace'?' All current leave, simulator and standby days will be replaced.':''),
+  apply(){if(mode==='replace')state.crew.forEach(c=>c.acts={});items.forEach(({c,key,a})=>{if(a.type==='off')delete c.acts[key];else c.acts[key]={...a}});return items.length+' days imported'}};
 }
 let impPending=null;
-function renderImpFormat(){const t=IMP[$('#imptype').value]?$('#imptype').value:'crew';$('#impformat').textContent=IMP[t].fmt;$('#imptext').placeholder=IMP[t].tpl.split('\n')[0];$('#imppreview').hidden=true;$('#impgo').hidden=true;impPending=null}
+function renderImpFormat(){const t=IMP[$('#imptype').value]?$('#imptype').value:'crew';$('#impformat').textContent=IMP[t].fmt+(t==='crew'?'':' Times are read as '+tzName()+'.');$('#imptext').placeholder=IMP[t].tpl.split('\n')[0];$('#imppreview').hidden=true;$('#impgo').hidden=true;impPending=null}
 function checkImport(){
  const text=$('#imptext').value.trim();if(!text){toast('Choose a file or paste the data first.');return}
  const rows=parseCSV(text),type=$('#imptype').value,mode=$('#impmode').value;
@@ -1264,12 +1301,14 @@ document.addEventListener('click',e=>{
  if(b.id==='mcopy'){copyCompose();return}
  if(ds.day){const[id,d]=ds.day.split('|');openDay(state.crew.find(x=>x.id===id),+d);return}
  if(ds.acttype&&ui.dayDraft){ui.dayDraft.type=ds.acttype;document.querySelectorAll('[data-acttype]').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#acttimes').hidden=!(ds.acttype==='sim'||ds.acttype==='sb');
-  if(ds.acttype==='sim'||ds.acttype==='sb'){const a=actOf(ui.dayDraft.c,ui.dayDraft.d);if(!a||a.type!==ds.acttype){$('#actstart').value=ACT[ds.acttype].start;$('#actend').value=ACT[ds.acttype].end}}return}
+  if(ds.acttype==='sim'||ds.acttype==='sb'){const a=actOf(ui.dayDraft.c,ui.dayDraft.d);if(!a||a.type!==ds.acttype){$('#actstart').value=ts(ACT[ds.acttype].start);$('#actend').value=ts(ACT[ds.acttype].end)}}return}
  if(b.id==='actsave'){saveDay();return}
- if(ds.putflight&&ui.dayDraft){const inst=R.insts.find(i=>i.id===ds.putflight),c=ui.dayDraft.c;inst.days.forEach(d=>{if(actOf(c,d)&&actOf(c,d).type==='sb')delete c.acts[d]});
+ if(ds.month){const [y,m]=state.month.split('-').map(Number);goMonth(monthKey(new Date(y,m-1+(+ds.month),1)));return}
+ if(ds.tz){state.tz.gmt=ds.tz==='gmt';save();render();toast('Times now shown in '+tzName()+'.');return}
+ if(ds.putflight&&ui.dayDraft){const inst=R.insts.find(i=>i.id===ds.putflight),c=ui.dayDraft.c;inst.days.forEach(d=>{if(actOf(c,d)&&actOf(c,d).type==='sb')delete c.acts[ymd(d)]});
   lockCrew(inst,c.rank,c,null);dlg.close();commit(c.name+' put on '+inst.code+', '+dayLabel(inst.day)+'.');const f=R.seats.find(s=>s.inst.id===inst.id&&s.crew===c);if(f&&f.flag)toast(c.name+' put on '+inst.code+'. Flagged: '+f.flag);return}
  if(ds.swapseat){const s=R.seats[+ds.swapseat],c=state.crew.find(x=>x.id===$('#swapsel').value);if(!c)return;const iid=s.inst.id;
-  s.inst.days.forEach(d=>{if(actOf(c,d)&&actOf(c,d).type==='sb')delete c.acts[d]});
+  s.inst.days.forEach(d=>{if(actOf(c,d)&&actOf(c,d).type==='sb')delete c.acts[ymd(d)]});
   lockCrew(s.inst,s.rank,c,s.crew);dlg.close();commit(c.name+' now on '+s.inst.code+', '+dayLabel(s.inst.day)+'.');const f=R.seats.find(x=>x.inst.id===iid&&x.crew===c);if(f&&f.flag)toast(c.name+' assigned. Flagged: '+f.flag);return}
  if(ds.unseat){const s=R.seats[+ds.unseat],c=s.crew,key=s.inst.id+'|'+s.rank;state.locks[key]=(state.locks[key]||[]).filter(id=>id!==c.id);const ex=state.excl[s.inst.id]||[];if(!ex.includes(c.id))ex.push(c.id);state.excl[s.inst.id]=ex;dlg.close();commit(c.name+' taken off '+s.inst.code+'. The planner has refilled the seat if it could.');return}
  if(ds.autoinst){Object.keys(state.locks).forEach(k=>{if(k.startsWith(ds.autoinst+'|'))delete state.locks[k]});delete state.excl[ds.autoinst];dlg.close();commit('Manual changes undone. The planner chose the crew again.');return}
@@ -1323,7 +1362,7 @@ document.addEventListener('input',e=>{
  const t=e.target;if(!draft)return;
  if(t.dataset.leg!==undefined){let v=t.value;const k=+t.dataset.dd,i=+t.dataset.leg,key=t.dataset.k,legs=draft.duties[k];
   if(key==='from'||key==='to'){v=v.toUpperCase().replace(/[^A-Z]/g,'');t.value=v}
-  const old=legs[i][key];legs[i][key]=v;
+  const old=legs[i][key];legs[i][key]=(key==='dep'||key==='arr')?toStore(v):v;
   if(key==='to'){
    const next=legs[i+1]||(i===legs.length-1&&draft.duties[k+1]?draft.duties[k+1][0]:null);
    if(next&&(next.from===''||next.from===old)){next.from=v;const nk=legs[i+1]?k:k+1,ni=legs[i+1]?i+1:0;const n=document.querySelector(`[data-dd="${nk}"][data-leg="${ni}"][data-k="from"]`);if(n)n.value=v}
@@ -1334,6 +1373,8 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
  const t=e.target;
  if(t.id==='personsel'){ui.person=t.value;renderGrid();return}
+ if(t.id==='monthsel'){goMonth(t.value);return}
+ if(t.dataset.tzoff){const v=+t.value;if(!Number.isFinite(v)||v<-12||v>14){t.value=state.tz.offset/60;toast('Enter an offset from -12 to 14.');return}state.tz.offset=Math.round(v*60);save();render();toast('Local time set to GMT'+(v>=0?'+':'')+v+'.');return}
  if(t.dataset.selc){t.checked?ui.sel.add(t.dataset.selc):ui.sel.delete(t.dataset.selc);renderShare();return}
  if(t.id==='imptype'||t.id==='impmode'){renderImpFormat();return}
  if(t.id==='impfile'&&t.files[0]){const f=t.files[0];f.text().then(x=>{$('#imptext').value=x;toast('Loaded '+f.name);checkImport()}).catch(()=>toast('Could not read that file.'));t.value='';return}
